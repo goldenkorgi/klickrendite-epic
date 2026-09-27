@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KlickRendite. Aus Klicks wird Rendite.</title>
+<meta name="description" content="Wir bauen, optimieren und skalieren deinen Marketing-Funnel, damit er planbar und messbar Kunden liefert: Meta Ads, Google Ads, Funnel-Marketing. Oliver Mahrle, Klickrendite UG (haftungsbeschränkt).">
+<meta name="theme-color" content="#0a0b0d">
+<meta name="robots" content="noindex,follow">
+<script>(function(d,w){d.classList.add('js');var rm=false;try{rm=w.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}if(!rm){d.classList.add('film');w.addEventListener('load',function(){w.setTimeout(function(){if(!w.__epic){d.classList.remove('film');if(document.body)document.body.classList.add('ready')}},60)})}try{if('scrollRestoration' in history)history.scrollRestoration='manual'}catch(e){}})(document.documentElement,window)</script>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="epic.css">
+</head>
+<body>
+
+<canvas id="swarm" aria-hidden="true"></canvas>
+
+<div class="hud" aria-hidden="true">
+  <span class="hl hl-t th"></span>
+  <span class="hl hl-b th"></span>
+  <span class="rail th"><i id="rail-fill"></i><b id="rail-dot"></b><span class="ticks" id="ticks"></span></span>
+  <span class="x x1 th"></span><span class="x x2 th"></span><span class="x x3 th"></span><span class="x x4 th"></span><span class="x x5 th"></span><span class="x x6 th"></span>
+  <p class="ro ro-tc th mono"><span id="ro-xy">X 0000 · Y 0000</span></p>
+  <p class="ro ro-bl th mono"><span>Scroll <b id="ro-p">000</b> %</span><span class="ro-kl">Klicks im Film <b id="ro-k">0</b></span></p>
+  <p class="ro ro-br th mono"><span class="ro-sw">Schwarm <b id="ro-f">Punktfeld</b></span><span>Kapitel <b id="ro-c">00</b> / 09 · <b id="ro-n">Start</b></span></p>
+</div>
+
+<header class="top">
+  <a class="logo th" href="#k0" aria-label="KlickRendite, zum Anfang"><img class="ld" src="assets/logo-dark.svg" alt="KlickRendite" width="368" height="64"><img class="ll" src="assets/logo-light.svg" alt="" width="368" height="64" aria-hidden="true"></a>
+  <a class="kontakt-link th mono" href="#k9">Kontakt</a>
+</header>
+
+<nav class="index th" id="index" aria-label="Kapitel">
+  <ol>
+    <li><a href="#k0" data-ch="0"><span class="n">00</span><span class="t">Start</span></a></li>
+    <li><a href="#k1" data-ch="1"><span class="n">01</span><span class="t">Die Geschichte</span></a></li>
+    <li><a href="#k2" data-ch="2"><span class="n">02</span><span class="t">Das Problem</span></a></li>
+    <li><a href="#k3" data-ch="3"><span class="n">03</span><span class="t">Das Wissen</span></a></li>
+    <li><a href="#k4" data-ch="4"><span class="n">04</span><span class="t">Die Arbeit</span></a></li>
+    <li><a href="#k5" data-ch="5"><span class="n">05</span><span class="t">Die Werkzeuge</span></a></li>
+    <li><a href="#k6" data-ch="6"><span class="n">06</span><span class="t">Der Weg</span></a></li>
+    <li><a href="#k7" data-ch="7"><span class="n">07</span><span class="t">Für wen</span></a></li>
+    <li><a href="#k8" data-ch="8"><span class="n">08</span><span class="t">Das erste Gespräch</span></a></li>
+    <li><a href="#k9" data-ch="9"><span class="n">09</span><span class="t">Kontakt</span></a></li>
+  </ol>
+</nav>
+
+<main id="film" class="film">
+
+<!-- KAPITEL 0 -->
+<section class="scene s0 on" id="k0" data-world="k" aria-label="Start">
+  <div class="beat b0">
+    <h1 class="mega" id="h1"><span class="l l1"><span>Aus Klicks</span></span><span class="l l2"><span>wird <em>Rendite.</em></span></span></h1>
+  </div>
+  <button class="gate" type="button" id="gate" aria-label="Klicken, um den Film zu starten">
+    <span class="gate-ring"></span><span class="gate-ring r2"></span><span class="gate-ring r3"></span>
+    <span class="gate-core" aria-hidden="true"><svg viewBox="0 0 128 128"><path d="M40 20 L40 84 L57 69 L68 93 L80 88 L69 64 L90 64 Z" fill="currentColor"/></svg></span>
+    <span class="gate-text mono">Klick.</span>
+  </button>
+  <p class="hint mono" id="hint" aria-live="polite">Scrollen bringt hier nichts. <b>Klick.</b></p>
+  <p class="cue mono" id="cue" aria-hidden="true"><i></i>Jetzt scrollen</p>
+</section>
+
+<!-- KAPITEL 1 -->
+<section class="scene s1" id="k1" data-world="k" aria-label="Die Geschichte" tabindex="-1">
+  <p class="chap mono"><span>01</span> Die Geschichte</p>
+  <div class="beat b1a"><h2 class="xl" data-split>Die wertvollsten Unternehmen unserer Zeit haben <em>eines gemeinsam.</em></h2></div>
+  <div class="beat b1b"><p class="giants"><span class="g1">Google.</span> <span class="g2">Meta.</span></p></div>
+  <div class="beat b1c"><p class="lg" data-split>Zwei der wertvollsten Konzerne der Welt. Gebaut auf einer einzigen Fähigkeit: <em>aus Klicks Rendite zu machen.</em></p></div>
+  <div class="beat b1d"><p class="lg" data-split>Sie haben das System erfunden. <em>Wir perfektionieren es</em> für ambitionierte Unternehmen mit skalierbaren Produkten.</p></div>
+</section>
+
+<!-- KAPITEL 2 -->
+<section class="scene s2" id="k2" data-world="k" aria-label="Das Problem" tabindex="-1">
+  <p class="chap mono"><span>02</span> Das Problem</p>
+  <div class="beat b2a"><h2 class="xl" data-split>Die meisten <em class="ember">verbrennen</em> dort ihr Geld.</h2></div>
+  <div class="beat b2b"><p class="lg" data-split>Sie schalten Anzeigen, zahlen für Klicks und kommen <em class="ember">nie in die Skalierung.</em></p></div>
+  <div class="beat b2c"><p class="lg" data-split>Nicht weil die Plattformen nicht funktionieren. Sondern weil zwischen Klick und Kauf <em class="plain">alles stimmen muss.</em></p></div>
+</section>
+
+<!-- KAPITEL 3 -->
+<section class="scene s3" id="k3" data-world="i" aria-label="Das Wissen" tabindex="-1">
+  <p class="chap mono"><span>03</span> Das Wissen</p>
+  <div class="beat b3a"><h2 class="xl" data-split>Wir wissen, was <em>kaum einer weiß.</em></h2></div>
+  <div class="beat b3b"><p class="lg" data-split>Wir haben genug Werbekonten von innen gesehen, um zu wissen, woran es liegt. Wir arbeiten mit eigener Software und mit <em>extremer Präzision.</em></p></div>
+  <div class="beat b3c">
+    <ul class="three">
+      <li><span class="mono tn">A</span><span class="tl">Wie die Landingpage aussehen muss.</span></li>
+      <li><span class="mono tn">B</span><span class="tl">Welche Elemente Vertrauen schaffen.</span></li>
+      <li><span class="mono tn">C</span><span class="tl">Wie du dich zeigen musst, damit aus einem Klick ein Kunde wird.</span></li>
+    </ul>
+  </div>
+  <div class="beat b3d"><p class="lg" data-split><em>Dieses Wissen kaufst du bei uns ein.</em> Es spart dir Jahre und teures Lehrgeld.</p></div>
+</section>
+
+<!-- KAPITEL 4 -->
+<section class="scene s4" id="k4" data-world="k" aria-label="Die Arbeit" tabindex="-1">
+  <p class="chap mono"><span>04</span> Die Arbeit</p>
+  <div class="beat b4a">
+    <div class="work">
+      <h2 class="xl2">Wir <span class="verbs" role="text" aria-label="bauen, optimieren und skalieren"><span class="v v1" aria-hidden="true">bauen</span><span class="sep" aria-hidden="true">, </span><span class="v v2" aria-hidden="true">optimieren</span><span class="sep" aria-hidden="true"> und </span><span class="v v3" aria-hidden="true">skalieren</span></span> <span class="rest">deinen <span class="nb">Marketing-Funnel.</span></span></h2>
+      <p class="md work-sub">Damit er planbar und messbar Kunden liefert.</p>
+    </div>
+  </div>
+  <div class="beat b4b"><p class="xl inout"><span class="io io1">Werbebudget rein,</span> <span class="io io2"><em>Rendite raus.</em></span></p></div>
+</section>
+
+<!-- KAPITEL 5 -->
+<section class="scene s5" id="k5" data-world="g" aria-label="Die Werkzeuge" tabindex="-1">
+  <p class="chap mono"><span>05</span> Die Werkzeuge</p>
+  <div class="mq mq-a" aria-hidden="true"><div class="mq-t"><span>Meta Ads</span><span>Google Ads</span><span>Funnel-Marketing</span><span>E-Mail-Marketing</span><span>Tracking</span><span>Conversions API</span><span>Meta Ads</span><span>Google Ads</span><span>Funnel-Marketing</span><span>E-Mail-Marketing</span><span>Tracking</span><span>Conversions API</span></div></div>
+  <div class="beat b5">
+    <ol class="tools">
+      <li class="tool t1"><span class="tn mono">01</span><h3 class="xl2">Meta Ads</h3><p class="md">Wir testen kontinuierlich Creatives und Zielgruppen. Gewinner werden skaliert. Käufe fließen zurück an Meta, der Algorithmus lernt auf Umsatz statt auf Klicks.</p></li>
+      <li class="tool t2"><span class="tn mono">02</span><h3 class="xl2">Google Ads</h3><p class="md">In den meisten Konten verbrennen Klicks, weil Einstellungen, Keywords und Ausschlüsse nie sauber gepflegt wurden. Unser System gibt Budget nur den Suchbegriffen, die kaufen.</p></li>
+      <li class="tool t3"><span class="tn mono">03</span><h3 class="xl2">Funnel-Marketing</h3><p class="md">Landingpages, Webinare, E-Mail-Marketing, SMS, WhatsApp, Retargeting und Tracking. Aus einem Klick wird eine Strecke, die bis zum Kauf führt.</p></li>
+    </ol>
+  </div>
+  <div class="mq mq-b" aria-hidden="true"><div class="mq-t"><span>Webinare</span><span>Retargeting</span><span>WhatsApp</span><span>Landingpages</span><span>Creatives</span><span>Tracking</span><span>Webinare</span><span>Retargeting</span><span>WhatsApp</span><span>Landingpages</span><span>Creatives</span><span>Tracking</span></div></div>
+</section>
+
+<!-- KAPITEL 6 -->
+<section class="scene s6" id="k6" data-world="k" aria-label="Der Weg" tabindex="-1">
+  <p class="chap mono"><span>06</span> Der Weg</p>
+  <div class="beat b6a"><h2 class="xl" data-split>Vom Klick bis zur Rendite. <em>Jede Stufe sichtbar.</em></h2></div>
+  <div class="beat b6b">
+    <ol class="stations" id="stations">
+      <li class="stn"><span class="cnt mono" aria-hidden="true">0</span><b>Klick</b><span class="sub mono">Meta, Google</span></li>
+      <li class="stn"><span class="cnt mono" aria-hidden="true">0</span><b>Landingpage</b><span class="sub mono">Anmeldung</span></li>
+      <li class="stn"><span class="cnt mono" aria-hidden="true">0</span><b>Webinar</b><span class="sub mono">Show-up</span></li>
+      <li class="stn"><span class="cnt mono" aria-hidden="true">0</span><b>Kauf</b><span class="sub mono">Zahlung</span></li>
+      <li class="stn last"><span class="cnt mono" aria-hidden="true">0</span><b>Rendite</b><span class="sub mono">Zuwachs</span></li>
+    </ol>
+    <p class="loop-l mono" id="loop-l">Käufe zurück an Meta · Conversions API</p>
+    <p class="note mono" id="fnote">Schematische Darstellung mit Beispielwerten</p>
+  </div>
+</section>
+
+<!-- KAPITEL 7 -->
+<section class="scene s7" id="k7" data-world="k" aria-label="Für wen" tabindex="-1">
+  <p class="chap mono"><span>07</span> Für wen</p>
+  <div class="beat b7a"><h2 class="lg2" data-split>Für <em>ambitionierte Unternehmen,</em> die online verkaufen können und mehr qualifizierte Leads benötigen.</h2></div>
+  <div class="beat b7b">
+    <ul class="who" id="who">
+      <li><b>Kapitalanlage-Vertriebe</b><span class="mono">Immobilien, Fonds, Beteiligungen</span></li>
+      <li><b>Online-Coaches</b><span class="mono">Webinare, Kurse, Programme</span></li>
+      <li><b>Personenmarken und Communities</b><span class="mono">Experten, Creator, Mitgliederplattformen</span></li>
+      <li><b>Handwerksbetriebe</b><span class="mono">Bau, Sanierung, Ausbau</span></li>
+      <li><b>Erneuerbare Energien</b><span class="mono">Solaranbieter, Wärmepumpenanbieter</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- KAPITEL 8 -->
+<section class="scene s8" id="k8" data-world="i" aria-label="Das erste Gespräch" tabindex="-1">
+  <p class="chap mono"><span>08</span> Das erste Gespräch</p>
+  <div class="beat b8a"><h2 class="xl" data-split>Im ersten Gespräch bekommst du meine <em>ehrliche Meinung.</em></h2></div>
+  <div class="beat b8b"><p class="lg q3"><span>Was ich von deinem Geschäft halte.</span> <span>Wo es heute steht.</span> <span>Ob es sich lohnt, dafür zu werben.</span></p></div>
+  <div class="beat b8c"><p class="lg" data-split>Wenn dein Geld woanders besser angelegt ist, <em>sage ich dir das.</em></p></div>
+  <div class="beat b8d"><p class="xl2" data-split>Wir nehmen nur Projekte an, von denen wir <em>überzeugt</em> sind.</p></div>
+  <div class="beat b8e"><p class="lg pre"><span class="mono pre-k">Voraussetzung</span><span class="pre-t" data-split>Ein Angebot und ein Verkaufsprozess, der schon funktioniert. <em>Wir skalieren, wir erfinden nicht.</em></span></p></div>
+</section>
+
+<!-- KAPITEL 9 -->
+<section class="scene s9" id="k9" data-world="k" aria-label="Kontakt" tabindex="-1">
+  <div class="beat b9">
+    <div class="contact">
+      <p class="eyebrow mono">Direkt zum Geschäftsführer</p>
+      <h2 class="name"><span class="nl"><span>Oliver</span></span> <span class="nl"><span>Mahrle</span></span></h2>
+      <p class="md lead">Keine Warteschleife, kein Vertrieb dazwischen. <b>Du schreibst, ich antworte.</b></p>
+      <ul class="ways">
+        <li><a class="way" href="mailto:oliver@klickrendite.de"><span class="k mono">E-Mail</span><span class="v">oliver@klickrendite.de</span><span class="arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12M9 3l5 5-5 5"/></svg></span></a></li>
+        <li><a class="way" href="tel:+4917634492580"><span class="k mono">Telefon</span><span class="v">+49 176 34492580</span><span class="arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12M9 3l5 5-5 5"/></svg></span></a></li>
+        <li><a class="way" href="https://wa.me/4917634492580" target="_blank" rel="noopener"><span class="k mono">WhatsApp</span><span class="v">Nachricht schreiben</span><span class="arrow" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h12M9 3l5 5-5 5"/></svg></span></a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot" id="foot">
+  <a href="impressum.html">Impressum</a>
+  <a href="datenschutz.html">Datenschutz</a>
+</footer>
+
+<div class="track" id="track" aria-hidden="true"></div>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/lenis.min.js"></script>
+<script src="epic.js"></script>
+</body>
+</html>
