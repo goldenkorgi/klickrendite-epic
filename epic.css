@@ -295,7 +295,7 @@ html.film .three-w{width:min(38vw,35rem)}
 html.film .three-h{margin-bottom:1.1rem}
 html.film .three{width:100%}
 html.film .three li{transition:opacity .4s}
-html.film .b3d p{max-width:17ch;font-size:clamp(1.8rem,4.2vw,4.6rem);line-height:1.02}
+html.film .b3d p{max-width:min(17ch,calc(75.5vw - 28vh - var(--gut) - 2.5rem));font-size:clamp(1.8rem,4.2vw,4.6rem);line-height:1.02}
 
 /* Kapitel 4 */
 html.film .work{max-width:56vw}
@@ -413,7 +413,7 @@ body.still .hud,body.still .index,body.still .hl,body.still .kontakt-link,body.s
 @keyframes dlg-in{from{opacity:0;transform:scale(.965)}to{opacity:1;transform:none}}
 @keyframes dlg-bd{from{opacity:0}to{opacity:1}}
 .dlg-in{position:relative;max-height:86vh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#0a0b0d;border:1px solid rgba(244,245,242,.16);box-shadow:0 40px 140px rgba(0,0,0,.7);scrollbar-width:thin;scrollbar-color:rgba(244,245,242,.22) transparent}
-.dlg-top{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.95rem clamp(1.25rem,3.6vw,3rem);background:rgba(10,11,13,.95);border-bottom:1px solid rgba(244,245,242,.12)}
+.dlg-top{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.95rem clamp(1.25rem,3.6vw,3rem);background:#0a0b0d;border-bottom:1px solid rgba(244,245,242,.12)}
 .dlg-k{color:#9aa39e;font-size:.66rem;display:flex;align-items:center;gap:.6rem}
 .dlg-k::before{content:"";width:1.25rem;height:1px;background:#3DD68C}
 .dlg-x{display:inline-flex;align-items:center;gap:.7rem;min-height:2.75rem;padding:0 .95rem 0 1.05rem;border:1px solid rgba(244,245,242,.22);border-radius:999px;color:#f4f5f2;font-size:.66rem;transition:background-color .25s,border-color .25s,color .25s}
@@ -488,6 +488,7 @@ html.film body.locked.dlg-on{touch-action:auto}
   html.film .b3c,html.film .b3d,html.film .b3b{align-items:flex-end}
   html.film .b3a{align-items:flex-end;padding-top:0;padding-bottom:13vh}
   html.film .b3a h2{font-size:clamp(1.5rem,7.3vw,2.9rem);line-height:1.04}
+  html.film .b3d p{max-width:17ch}
   html.film .b2c p,html.film .b8b p{font-size:clamp(1.55rem,3.3vw,3.6rem)}
   html.film .who-note{max-width:none}
   html.film .three-w{width:100%}
@@ -544,9 +545,13 @@ html.film body.locked.dlg-on{touch-action:auto}
 }
 @media (min-width:760px) and (max-width:1199px) and (orientation:landscape){
   html.film .b3b p{max-width:18ch;font-size:clamp(1.4rem,2.8vw,3.2rem)}
+  html.film .b3d p{font-size:clamp(1.6rem,3.6vw,4.6rem)}
   html.film .b4b p{font-size:clamp(2.2rem,4.6vw,5rem)}
   html.film .card h3{font-size:clamp(2.2rem,4.8vw,6.2rem)}
   html.film .contact{width:min(48vw,50rem)}
+}
+@media (min-width:760px) and (max-aspect-ratio:3/2) and (orientation:landscape){
+  html.film .mega{font-size:clamp(3rem,10.4vw,13.5rem)}
 }
 @media (min-width:760px) and (max-width:1023px){
   html.film .wa .wa-l{display:none}

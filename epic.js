@@ -55,8 +55,9 @@
   /* Scroll und Film laufen nicht im selben Takt. Die Abbildung ist stueckweise linear: [Filmzeit 0..1, Strecke in Bildschirmhoehen].
      Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten Stueck. Die sechs Welten in Kapitel 7 haben je Welt dieselbe
      Strecke wie zuvor die fuenf (am Handy etwas mehr), Kapitel 8 und 9 behalten ihre Strecke. Alle Zeiten im Code bleiben Filmzeit. */
-  var MAP_D = [[0, 0], [.164, 4.2], [.844, 29.25], [1, LEN_D - 1]];
-  var MAP_M = [[0, 0], [.164, 3.22], [.723, 16.45], [.844, 19.98], [1, LEN_M - 1]];
+  var K8 = 84.4;                             // Beginn von Kapitel 8 in Filmzeit
+  var MAP_D = [[0, 0], [.164, 4.2], [K8 / 100, 29.25], [1, LEN_D - 1]];
+  var MAP_M = [[0, 0], [.164, 3.22], [.723, 16.45], [K8 / 100, 19.98], [1, LEN_M - 1]];
   var MAP = MAP_D;
   function s2p(s) { var h = s * MAP[MAP.length - 1][1], i; for (i = 1; i < MAP.length; i++) if (h <= MAP[i][1] || i === MAP.length - 1) return MAP[i - 1][0] + (h - MAP[i - 1][1]) * (MAP[i][0] - MAP[i - 1][0]) / (MAP[i][1] - MAP[i - 1][1]); return 1; }
   function p2s(q) { var i; for (i = 1; i < MAP.length; i++) if (q <= MAP[i][0] || i === MAP.length - 1) return (MAP[i - 1][1] + (q - MAP[i - 1][0]) * (MAP[i][1] - MAP[i - 1][1]) / (MAP[i][0] - MAP[i - 1][0])) / MAP[MAP.length - 1][1]; return 1; }
@@ -76,7 +77,7 @@
   /* Kapitel 7 traegt sechs Welten und endet bei 84,4 statt 82,2: auch die letzte Welt steht so lange wie die anderen.
      Kapitel 8 und 9 ruecken nach: late() rechnet ihre Zeiten aus der alten Zaehlung (82,2 bis 100) in die neue Filmzeit
      (84,4 bis 100), KL ist der Faktor fuer Dauern. Die Strecke der beiden Kapitel bleibt gleich (MAP_D, MAP_M). */
-  var K8 = 84.4, KL = (100 - K8) / 17.8;
+  var KL = (100 - K8) / 17.8;
   function late(x) { return K8 + (x - 82.2) * KL; }
   var CH = [0, 2.6, 16.4, 26, 38.2, 45.6, 55.4, 69.1, K8, late(94.0)];
   var CHJ = [0, 3.5, 19.6, 28.2, 40.3, 48, 59.5, 71.1, late(84), 99.6];
@@ -808,7 +809,10 @@
     function put(o, i, al, cr) { if (G.fun.vert) { o.x[i] = C.c + cr * C.cz; o.y[i] = al; } else { o.x[i] = al; o.y[i] = C.c + cr * C.cz; } }
     /* Messuhr k sitzt zwischen Station k und k + 1 auf der Huelle. Dieselbe Rechnung dient dem Bild und der Schaltflaeche. */
     function gaugeAt(k, front, g) {
-      var s = k + (G.fun.vert ? (k === 0 ? .6 : k === 3 ? .42 : .58) : .56), hull = (hwAt(s) * 1.16 + 8) * C.cz, rg = (G.fun.vert ? Math.min(11.5, H * .0145) : 12.5) * C.zs, st = (G.fun.vert ? 27 : 14) * C.zs;
+      var vert = G.fun.vert, rg = (vert ? G.fun.rg : 12.5) * C.zs, st = (vert ? lerp(27, 3, C.ov) : 14) * C.zs, fr = vert ? (k === 0 ? .6 : k === 3 ? .42 : .58) : .56;
+      // Handy, Totale: die Uhr steht in einer eigenen Spalte zwischen Huelle und Schrift und endet ueber dem Zaehler der naechsten Station
+      if (vert) fr = Math.min(fr, (C.D - 34 - rg) / C.D);
+      var s = k + fr, hull = (hwAt(s) * 1.16 + 8) * C.cz;
       g.r = rg; g.v = sstep(k + .3, k + .6, front);
       if (G.fun.vert) { g.x = C.c + hull + st + rg; g.y = along(s); g.ax = C.c + hull; g.ay = g.y; g.ok = g.y - rg > HT + 8 && g.y + rg < H - HB - 8 && g.x + rg < W - 10; }
       else { g.x = along(s); g.y = C.c - hull - st - rg; g.ax = g.x; g.ay = C.c - hull; g.ok = g.x - rg > IX + 4 && g.x + rg < W - 12 && g.y - rg > HT + 8; }
@@ -1651,12 +1655,15 @@
     var F_;
     if (M) {
       var ltE = doc.getElementById('loop-t'), ltH = Math.max(86, ltE ? ltE.offsetHeight : 0);
-      F_ = G.fun = { vert: true, c: W * .3, a0: H * .2, a4: Math.min(H * .72, H - HB - 1.75 * REM - ltH - 3.1 * REM - 8), hw: [W * .2, W * .14, W * .09, W * .05, W * .03], hin: W * .3, Dc: H * .56, fc: H * .46, cc: W * .3, ring: W * .24, czMax: 2.2, chute: W * .06 };
+      F_ = G.fun = { vert: true, rg: Math.min(11.5, H * .0145), c: W * .3, a0: H * .2, a4: Math.min(H * .72, H - HB - 1.75 * REM - ltH - 3.1 * REM - 8), hw: [W * .2, W * .14, W * .09, W * .05, W * .03], hin: W * .3, Dc: H * .56, fc: H * .46, cc: W * .3, ring: W * .24, czMax: 2.2, chute: W * .06 };
       // Signet unten rechts, unter dem Rueckweg, neben der Station Rendite
       var mu = Math.min((W * .31) / 78, (H * .15) / 81), mxr = W - 1.1 * REM - 8;
       F_.mk = { u: mu, ox: mxr - 103 * mu, oy: F_.a4 - H * .01 - 22 * mu };
       var cb = W - 26 - F_.c;
-      F_.loop = { s1: 3.45, s0: -.55, c0: F_.hw[3] * 1.16 + 8, cb: cb, side: 1, l1: cb - (F_.hw[3] * 1.16 + 8), l2: 4.0 * (F_.a4 - F_.a0) / 4, l3: cb - F_.hin * .9 };
+      // in der Totale ruecken die Stationsnamen um die Breite der Uhr nach rechts; der Rueckweg haelt Abstand zum ersten Zaehler
+      F_.gsx = 2 * F_.rg - 5;
+      var s0 = -Math.max(.55, Math.min(.8, 47 / ((F_.a4 - F_.a0) / 4)));
+      F_.loop = { s1: 3.45, s0: s0, c0: F_.hw[3] * 1.16 + 8, cb: cb, side: 1, l1: cb - (F_.hw[3] * 1.16 + 8), l2: (3.45 - s0) * (F_.a4 - F_.a0) / 4, l3: cb - F_.hin * .9 };
     } else {
       F_ = G.fun = { vert: false, c: H * .545, a0: W * .15, a4: W * .742, hw: [H * .225, H * .148, H * .09, H * .044, H * .025], hin: H * .31, Dc: W * .62, fc: W * .6, cc: H * .585, ring: H * .3, czMax: 4.2, chute: H * .115 };
       // Signet rechts neben der Station Rendite: so gross, wie der Platz bis zum Rand erlaubt
@@ -1680,9 +1687,31 @@
     if (verbsEl) { verbsEl.style.width = ''; verbW = verbEls.map(function (v) { var rg = doc.createRange(); rg.selectNodeContents(v); return Math.ceil(rg.getBoundingClientRect().width) + 2; }); vbS = -1; }
     G.stnH = stn.map(function (e) { return e.offsetHeight || 78; });
     var whEl = $('.who-head'); G.seedTop = whEl ? offT(whEl) : H;
+    fitWire(); fitHero();
     brandW100 = 0; brandK = ' ';
     portalMeasure();
     kick();
+  }
+  /* Handy: das Drahtmodell der Landingpage endet ueber der Liste "Daraus wissen wir", auch auf niedrigen Schirmen */
+  var wireK = '';
+  function fitWire() {
+    if (!M) { wireK = ''; return; }
+    var tw = $('.three-w'), top = tw ? offT(tw) : H, y0 = Math.max(HT + 12, H * .085), h = clamp(top - 18 - y0, H * .2, H * .4), k = Math.round(h) + '|' + Math.round(y0);
+    G.wire = { cx: W * .5, cy: y0 + h / 2, h: h }; G.wire.s = h / 1.25; G.wire.x0 = G.wire.cx - G.wire.s / 2; G.wire.y0 = y0;
+    if (wireK && wireK !== k && FORM.grid && GRID.x) { FORM.grid.init(); FORM.wire.init(); }
+    wireK = k;
+  }
+  /* Desktop: die drei Balken am Klick-Ziel stehen rechts neben der ersten Zeile der Ueberschrift und ueber der zweiten, nie in ihr */
+  function fitHero() {
+    if (M || !h1 || G.gx === undefined) return;
+    var l1 = $('.l1 > span', h1), l2 = $('.l2 > span', h1), u0 = H * .4 / 72, u = u0, r1, r2, fs, keepT;
+    if (!l1 || !l2) return;
+    root.classList.add('measuring'); keepT = h1.style.transform; h1.style.transform = 'none';
+    r1 = l1.getBoundingClientRect(); r2 = l2.getBoundingClientRect(); fs = parseFloat(getComputedStyle(h1).fontSize) || 100;
+    h1.style.transform = keepT; root.classList.remove('measuring');
+    if (r1.width && G.gy + 53 * u0 > r1.top + fs * .1) u = Math.min(u, (G.gx - r1.right - 22) / 54);
+    if (r2.width && r2.right > G.gx - 54 * u - 12) u = Math.min(u, (r2.top + fs * .1 - 13 - G.gy) / 53);
+    G.hero.u = clamp(u, u0 * .6, u0);
   }
   /* Nach jeder Groessenaenderung die HUD-Ebene neu malen lassen (manche Browser lassen den neuen Rand sonst leer) */
   var hudEl = $('.hud'), kickN = 0;
@@ -1709,8 +1738,11 @@
       el = stn[i]; ring = FORM.funnel.ringAt(i) * C.cz;
       close = clamp(1.6 - Math.abs(C.sc - i) * 2.6, 0, 1) * sstep(58.2, 58.6, p);
       o = Math.max(C.ov, close) * sstep(i - .3, i - .1, front + .0001) * fade;
+      // waehrend die Kamera in die Totale zieht, wandern die Namen ins Bild: im Kopfband, im Fussband und ueber dem Kapitelindex bleiben sie unsichtbar
+      if (F_.vert) { y = C.x0 + i * C.D - 30; g = (G.stnH[i] || 78) * (sc - 1) / 2; o *= sstep(HT - 2, HT + 16, y - g) * sstep(H - HB + 2, H - HB - 16, y + (G.stnH[i] || 78) + g); }
+      else o *= sstep(IX + 30, IX + 60, C.x0 + i * C.D);
       o = Math.round(o * 100) / 100;
-      if (F_.vert) { x = C.c + ring + 14; y = C.x0 + i * C.D - 30; tf = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) scale(' + sc.toFixed(3) + ')'; }
+      if (F_.vert) { x = C.c + ring + 14 + C.ov * F_.gsx; y = C.x0 + i * C.D - 30; tf = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) scale(' + sc.toFixed(3) + ')'; }
       else { x = C.x0 + i * C.D; y = C.c - ring - 16; tf = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) translate(-50%,-100%) scale(' + sc.toFixed(3) + ')'; }
       key = tf + o;
       if (stnK[i] !== key) { stnK[i] = key; el.style.transformOrigin = F_.vert ? '0 50%' : '50% 100%'; el.style.transform = tf; el.style.opacity = o; }
@@ -1763,7 +1795,7 @@
     el = gzT[i]; g = gzG[i];
     var F_ = G.fun, C = FORM.funnel.cam(pS * 100), mw = '';
     // schmale Geraete: die Karte wird so schmal, dass sie links neben den Stationsnamen Platz findet
-    if (F_.vert) mw = Math.round(clamp(C.c + FORM.funnel.ringAt(Math.min(4, i + 1)) * C.cz + 14 - 8 - 12, 112, 168)) + 'px';
+    if (F_.vert) mw = Math.round(clamp(C.c + FORM.funnel.ringAt(Math.min(4, i + 1)) * C.cz + 14 + C.ov * F_.gsx - 8 - 12, 112, 168)) + 'px';
     if (el.style.maxWidth !== mw) el.style.maxWidth = mw;
     tw = el.offsetWidth; th = el.offsetHeight;
     key = g.x.toFixed(0) + ',' + g.y.toFixed(0) + ',' + tw + ',' + th; if (key === tipK) return; tipK = key;
