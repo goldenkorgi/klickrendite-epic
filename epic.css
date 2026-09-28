@@ -41,6 +41,7 @@ em.plain{color:inherit}
 [data-world="g"]{--bg:#3DD68C;--fg:#0a0b0d;--mute:rgba(10,11,13,.74);--line:rgba(10,11,13,.3);--acc:#0a0b0d}
 [data-world="d"]{--bg:#0d2a1e;--fg:#f4f5f2;--mute:#a9c4b6;--line:rgba(244,245,242,.22);--acc:#3DD68C}
 [data-world="m"]{--bg:#d3f3e1;--fg:#0a0b0d;--mute:#3f5248;--line:rgba(10,11,13,.22);--acc:#0c8f52}
+[data-world="e"]{--bg:#0c5f3f;--fg:#f4f5f2;--mute:#cfe6da;--line:rgba(244,245,242,.26);--acc:#a8f0cd}
 
 /* Typo */
 .mega{font-weight:800;font-size:clamp(3rem,12.2vw,13.5rem);line-height:.9;letter-spacing:-.045em}
@@ -148,7 +149,7 @@ html.film body{overflow-x:hidden}
 html.film body.locked{overflow:hidden;height:100vh;height:100svh;touch-action:none;overscroll-behavior:none;cursor:pointer}
 html.film body.locked a{cursor:pointer}
 html.film #swarm{display:block;position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;background:var(--k)}
-html.film .track{display:block;width:1px;height:3600vh;pointer-events:none;visibility:hidden}
+html.film .track{display:block;width:1px;height:3680vh;pointer-events:none;visibility:hidden}
 html.film .film{position:fixed;inset:0;z-index:2;overflow:hidden;pointer-events:none}
 html.film .scene{position:absolute;inset:0;padding:0;background:none;visibility:hidden;overflow:hidden;display:block;min-height:0}
 html.film .scene.on{visibility:visible}
@@ -170,10 +171,11 @@ html.film body.locked .kontakt-link{visibility:hidden}
 .th.t-g{--hbg:#3DD68C;--hfg:#0a0b0d;--hmute:rgba(10,11,13,.66);--hline:rgba(10,11,13,.3);--hacc:#0a0b0d}
 .th.t-d{--hbg:#0d2a1e;--hfg:#f4f5f2;--hmute:rgba(244,245,242,.56);--hline:rgba(244,245,242,.2);--hacc:#3DD68C}
 .th.t-m{--hbg:#d3f3e1;--hfg:#0a0b0d;--hmute:rgba(10,11,13,.62);--hline:rgba(10,11,13,.24);--hacc:#0c8f52}
-/* Logo: auf Schwarz und Dunkelgruen helle Schrift mit gruenen Balken, auf Gruen ganz in Weiss, auf Elfenbein und Mint die dunkle Fassung */
-html.film .top .logo.t-i .ld,html.film .top .logo.t-g .ld,html.film .top .logo.t-m .ld{display:none}
+.th.t-e{--hbg:#0c5f3f;--hfg:#f4f5f2;--hmute:rgba(244,245,242,.66);--hline:rgba(244,245,242,.24);--hacc:#a8f0cd}
+/* Logo: auf Schwarz und Dunkelgruen helle Schrift mit gruenen Balken, auf Gruen und Smaragd ganz in Weiss, auf Elfenbein und Mint die dunkle Fassung */
+html.film .top .logo.t-i .ld,html.film .top .logo.t-g .ld,html.film .top .logo.t-m .ld,html.film .top .logo.t-e .ld{display:none}
 html.film .top .logo.t-i .ll,html.film .top .logo.t-m .ll{display:block}
-html.film .top .logo.t-g .lw{display:block}
+html.film .top .logo.t-g .lw,html.film .top .logo.t-e .lw{display:block}
 html.film .kontakt-link{color:var(--hmute)}
 html.film .kontakt-link:hover{color:var(--hacc)}
 
@@ -448,7 +450,7 @@ html.film body.locked.dlg-on{touch-action:auto}
 /* ===================== Mobil ===================== */
 @media (max-width:759px),(max-width:1099px) and (orientation:portrait){
   :root{--gut:1.35rem}
-  html.film .track{height:2400vh}
+  html.film .track{height:2520vh}
   html.film .top{padding:1rem 1.1rem 0}
   html.film .top .logo img{height:1.35rem}
   .hl{left:1.1rem;right:1.1rem}

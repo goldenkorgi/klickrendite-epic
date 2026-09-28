@@ -51,12 +51,15 @@
   /* ---------- Grundzustand ---------- */
   var W = 0, H = 0, M = false, dpr = 1, N = 0, maxScroll = 1, trackH = 0;
   var REM = 16, HT = 70, HB = 58, IX = 96;   // HUD-Baender und Spalte des Kapitelindex
-  var LEN_D = 36, LEN_M = 24;                // Filmlaenge in Bildschirmhoehen
-  /* Scroll und Film laufen nicht im selben Takt: Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten
-     Stueck der Strecke (S2), danach laeuft der Film gleichmaessig. Alle Zeiten im Code bleiben Filmzeit. */
-  var P2 = .164, S2 = .12;
-  function s2p(s) { return s <= S2 ? s * P2 / S2 : P2 + (s - S2) * (1 - P2) / (1 - S2); }
-  function p2s(q) { return q <= P2 ? q * S2 / P2 : S2 + (q - P2) * (1 - S2) / (1 - P2); }
+  var LEN_D = 36.8, LEN_M = 25.2;            // Filmlaenge in Bildschirmhoehen
+  /* Scroll und Film laufen nicht im selben Takt. Die Abbildung ist stueckweise linear: [Filmzeit 0..1, Strecke in Bildschirmhoehen].
+     Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten Stueck. Die sechs Welten in Kapitel 7 haben je Welt dieselbe
+     Strecke wie zuvor die fuenf (am Handy etwas mehr), Kapitel 8 und 9 behalten ihre Strecke. Alle Zeiten im Code bleiben Filmzeit. */
+  var MAP_D = [[0, 0], [.164, 4.2], [.844, 29.25], [1, LEN_D - 1]];
+  var MAP_M = [[0, 0], [.164, 3.22], [.723, 16.45], [.844, 19.98], [1, LEN_M - 1]];
+  var MAP = MAP_D;
+  function s2p(s) { var h = s * MAP[MAP.length - 1][1], i; for (i = 1; i < MAP.length; i++) if (h <= MAP[i][1] || i === MAP.length - 1) return MAP[i - 1][0] + (h - MAP[i - 1][1]) * (MAP[i][0] - MAP[i - 1][0]) / (MAP[i][1] - MAP[i - 1][1]); return 1; }
+  function p2s(q) { var i; for (i = 1; i < MAP.length; i++) if (q <= MAP[i][0] || i === MAP.length - 1) return (MAP[i - 1][1] + (q - MAP[i - 1][0]) * (MAP[i][1] - MAP[i - 1][1]) / (MAP[i][0] - MAP[i - 1][0])) / MAP[MAP.length - 1][1]; return 1; }
   function filmAt(y) { return DEBUG ? clamp(pBase + y / maxScroll, 0, 1) : s2p(clamp(y / maxScroll, 0, 1)); }
   function scrollFor(q) { return Math.max(0, Math.round(DEBUG ? (q - pBase) * maxScroll : p2s(clamp(q, 0, 1)) * maxScroll)); }
   var pBase = DEBUG ? DEBUG_P : 0;   // Debug: der Film beginnt an dieser Stelle, das Fenster bleibt bei Scroll 0
@@ -70,24 +73,30 @@
   var film = $('#film'), track = $('#track'), hint = $('#hint'), foot = $('#foot');
   var flash = doc.createElement('div'); flash.className = 'flash'; flash.setAttribute('aria-hidden', 'true'); body.appendChild(flash);
 
-  var CH = [0, 2.6, 16.4, 26, 38.2, 45.6, 55.4, 69.1, 82.2, 94.0];
-  var CHJ = [0, 3.5, 19.6, 28.2, 40.3, 48, 59.5, 71.1, 84, 99.6];
+  /* Kapitel 7 traegt sechs Welten und endet bei 84,4 statt 82,2: auch die letzte Welt steht so lange wie die anderen.
+     Kapitel 8 und 9 ruecken nach: late() rechnet ihre Zeiten aus der alten Zaehlung (82,2 bis 100) in die neue Filmzeit
+     (84,4 bis 100), KL ist der Faktor fuer Dauern. Die Strecke der beiden Kapitel bleibt gleich (MAP_D, MAP_M). */
+  var K8 = 84.4, KL = (100 - K8) / 17.8;
+  function late(x) { return K8 + (x - 82.2) * KL; }
+  var CH = [0, 2.6, 16.4, 26, 38.2, 45.6, 55.4, 69.1, K8, late(94.0)];
+  var CHJ = [0, 3.5, 19.6, 28.2, 40.3, 48, 59.5, 71.1, late(84), 99.6];
   var CHN = ['Start', 'Die Geschichte', 'Das Problem', 'Das Wissen', 'Die Arbeit', 'Die Werkzeuge', 'Der Weg', 'Für wen', 'Das erste Gespräch', 'Kontakt'];
-  var WA = [72.3, 74.3, 76.3, 78.3, 80.3], WL = 2;   // die fuenf Welten in Kapitel 7
+  var WA = [72.3, 74.3, 76.3, 78.3, 80.3, 82.3], WL = 2, NS = WA.length;   // die sechs Welten in Kapitel 7
 
   /* ---------- Welten und Wischer ---------- */
-  var NW = 5, NB = NW * 25;
-  var WN = ['k', 'i', 'g', 'd', 'm'];
-  var BG = ['#0a0b0d', '#f4f5f2', '#3DD68C', '#0d2a1e', '#d3f3e1'];
-  var FG = ['#f4f5f2', '#121417', '#0a0b0d', '#f4f5f2', '#0a0b0d'];
-  var ACC = ['#3DD68C', '#0f9d5b', '#0a0b0d', '#3DD68C', '#0c8f52'];
-  var ADD = [1, 0, 0, 1, 0];       // dunkle Welten mischen additiv
+  var NW = 6, NB = NW * 25;
+  var WN = ['k', 'i', 'g', 'd', 'm', 'e'];
+  var BG = ['#0a0b0d', '#f4f5f2', '#3DD68C', '#0d2a1e', '#d3f3e1', '#0c5f3f'];
+  var FG = ['#f4f5f2', '#121417', '#0a0b0d', '#f4f5f2', '#0a0b0d', '#f4f5f2'];
+  var ACC = ['#3DD68C', '#0f9d5b', '#0a0b0d', '#3DD68C', '#0c8f52', '#a8f0cd'];
+  var ADD = [1, 0, 0, 1, 0, 0];    // dunkle Welten mischen additiv
   var PAL = [
     [[244, 245, 242], [61, 214, 140], [255, 90, 42], [255, 46, 46], [140, 149, 144]],
     [[18, 20, 23], [15, 157, 91], [118, 126, 121], [118, 126, 121], [118, 126, 121]],
     [[10, 11, 13], [244, 245, 242], [10, 11, 13], [10, 11, 13], [14, 96, 58]],
     [[244, 245, 242], [61, 214, 140], [150, 182, 166], [150, 182, 166], [150, 182, 166]],
-    [[10, 11, 13], [12, 143, 82], [70, 96, 82], [70, 96, 82], [70, 96, 82]]
+    [[10, 11, 13], [12, 143, 82], [70, 96, 82], [70, 96, 82], [70, 96, 82]],
+    [[244, 245, 242], [150, 245, 200], [126, 190, 160], [126, 190, 160], [126, 190, 160]]
   ];
   var LV = [.11, .24, .42, .68, 1];
   var STY = [];
@@ -143,8 +152,9 @@
     { at: WA[2], dur: .6, to: 2, o: function () { return [G.pic.cx, G.pic.cy]; } },
     { at: WA[3], dur: .6, to: 4, o: function () { return [G.pic.cx, G.pic.cy]; } },
     { at: WA[4], dur: .6, to: 3, o: function () { return [G.pic.cx, G.pic.cy]; } },
-    { at: 82.2, dur: .7, to: 1, o: function () { return [G.eye.x0, G.hor]; } },
-    { at: 94.0, dur: 1.0, to: 0, o: function () { return [(G.eye.x0 + G.eye.x1) / 2, G.hor]; } }
+    { at: WA[5], dur: .6, to: 5, o: function () { return [G.pic.cx, G.pic.cy]; } },
+    { at: K8, dur: .7 * KL, to: 1, o: function () { return [G.eye.x0, G.hor]; } },
+    { at: late(94.0), dur: 1.0 * KL, to: 0, o: function () { return [(G.eye.x0 + G.eye.x1) / 2, G.hor]; } }
   ];
   var ign = null;            // Zuendung: gruener Ring, zeitgesteuert
   var ripples = [];          // Klick-Wellen
@@ -1038,7 +1048,7 @@
   var GZ = { hot: -1, pin: -1, pinP: 0, k: [0, 0, 0, 0], cx: 0, cy: 0, cw: 0, ch: 0 };
   function rrect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); }
 
-  /* 11 bis 16 · Fuenf Welten. Jedes Bild ist eine Zeichnung, die der Schwarm formt. */
+  /* 11 bis 16 · Sechs Welten. Jedes Bild ist eine Zeichnung, die der Schwarm formt. */
   function Pic() { this.P = []; this.X = []; }
   Pic.prototype = {
     line: function (x1, y1, x2, y2, g, r, wt) { this.P.push({ t: 0, a: [x1, y1, x2, y2], g: g || 0, r: r || 0, w: Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) * (wt || 1) }); return this; },
@@ -1214,23 +1224,84 @@
     return m;
   })());
 
-  /* Auftakt zu Kapitel 7: fuenf Keime, aus jedem wird eine Welt */
+  /* Welt 6 · Gastgeber: eine Finca am Hang, der Pool, eine Palme, die Sonne steht tief ueber dem Meer */
+  var W6 = { hy: .46, sx: .465, sy: .45, cx: .1, cy: .29 };
+  FORM.w6 = picForm(5, 'Finca', function (P) {
+    var hy = W6.hy, sx = W6.sx, sy = W6.sy, sr = .09, tl = .87, hb = .67, bx = .755, bw = .27, bt = .485, cx = W6.cx, cy = W6.cy, pcx = .5, pcy = .795, prx = .135, pry = .047;
+    var i, j, a, r1, u, x, y, x2, y2, tx, ty, tn, l, sg, el = [], ew = [], tr = [[.035, .945], [.03, .81], [.034, .67], [.047, .53], [.07, .4], [cx, cy]];
+    var FR = [[-178, .19, .17], [-150, .2, .12], [-120, .17, .07], [-88, .15, .04], [-58, .17, .07], [-30, .2, .12], [-4, .17, .16]];
+    // Meer, tiefe Sonne, ihr Licht auf dem Wasser
+    P.line(.075, hy, .7, hy, 0, 0, 1.2);
+    P.disc(sx, sy, sr, 1, 1, 46); P.circ(sx, sy, sr + .034, 2, 0);
+    for (i = 0; i < 7; i++) { a = -PI + (i + 1) * PI / 8; r1 = sr + (i % 2 ? .15 : i % 6 ? .105 : .095); P.line(sx + Math.cos(a) * (sr + .065), sy + Math.sin(a) * (sr + .065), sx + Math.cos(a) * r1, sy + Math.sin(a) * r1, 3, i % 2 ? 1 : 0); }
+    for (i = 0; i < 4; i++) P.line(sx - .1 + i * .024, hy + .034 + i * .032, sx + .1 - i * .024, hy + .034 + i * .032, 4, 1, 1.1);
+    // der Hang: hinten steigt er an, vorn liegen zwei Terrassen
+    P.line(.7, hy, 1.06, .185, 0, 4, .8);
+    P.poly([[-.06, .975], [.3, tl], [.69, tl], [.715, hb], [1.06, hb]], 0, 0, false, 1.2);
+    for (i = 0; i < 3; i++) P.line(.7 + i * .006, tl - .04 - i * .05, .74 + i * .006, tl - .04 - i * .05, 0, 4, .7);
+    // die Finca: flaches Dach, drei Boegen, Licht in den Fenstern
+    P.poly([[bx, hb], [bx, bt], [bx + bw, bt], [bx + bw, hb]], 0, 0, false, 1.3);
+    P.poly([[bx - .032, bt + .004], [bx + .05, .405], [bx + bw - .05, .405], [bx + bw + .032, bt + .004]], 0, 0, true, 1.6);
+    P.poly([[bx + bw - .088, .405], [bx + bw - .088, .352], [bx + bw - .052, .352], [bx + bw - .052, .405]], 0, 0, false);
+    for (i = 0; i < 3; i++) {
+      x = bx + .055 + i * .08;
+      P.line(x - .028, hb, x - .028, hb - .077, 0, 0); P.circ(x, hb - .077, .028, 0, 0, PI, TAU); P.line(x + .028, hb - .077, x + .028, hb, 0, 0);
+      P.fill(x - .015, bt + .024, .03, .032, 10 + i * 3, 1, 110);
+    }
+    // der Pool auf der unteren Terrasse: rund, mit Wasser und Leiter
+    for (i = 0; i < 30; i++) { a = i / 30 * TAU; el.push([pcx + Math.cos(a) * prx, pcy + Math.sin(a) * pry]); ew.push([pcx + Math.cos(a) * (prx - .013), pcy + Math.sin(a) * (pry - .009)]); }
+    P.poly(el, 0, 0, true, 1.3); P.shape(ew, 6, 1, 64);
+    for (i = 0; i < 2; i++) { x = pcx + .062 + i * .034; y = pcy + pry * .82 - i * .012; P.line(x - .012, y + .012, x - .012, y - .03, 0, 0, 1.2); P.circ(x, y - .03, .012, 0, 0, PI, TAU, 1.2); P.line(x + .012, y - .03, x + .012, y - .012, 0, 0, 1.2); }
+    // die Palme rahmt das Bild
+    P.poly(tr, 0, 0, false, 1.5);
+    P.poly(tr.map(function (q, n) { return [q[0] + .024 * (1 - n / 5.4), q[1]]; }), 0, 0, false, 1.5);
+    for (i = 1; i < 5; i++) P.line(tr[i][0], tr[i][1], tr[i][0] + .024 * (1 - i / 5.4), tr[i][1] - .012, 0, 4, .8);
+    for (i = 0; i < FR.length; i++) {
+      a = FR[i][0] * PI / 180; x = cx; y = cy; sg = Math.cos(a) < 0 ? -1 : 1;
+      for (j = 1; j <= 7; j++) {
+        u = j / 7; x2 = cx + Math.cos(a) * FR[i][1] * u; y2 = cy + Math.sin(a) * FR[i][1] * u + FR[i][2] * u * u;
+        P.line(x, y, x2, y2, 7, 0, 1.6);
+        // Fiedern: kurze Striche an der Unterseite, zur Spitze hin kuerzer
+        tx = x2 - x; ty = y2 - y; tn = Math.sqrt(tx * tx + ty * ty) || 1; tx /= tn; ty /= tn; l = .042 * (1 - .55 * u);
+        if (j > 1) P.line(x2, y2, x2 + (tx * .45 - ty * sg * .9) * l, y2 + (ty * .45 + tx * sg * .9) * l, 7, 4, .8);
+        x = x2; y = y2;
+      }
+    }
+    P.disc(cx - .015, cy + .022, .012, 7, 1, 160); P.disc(cx + .014, cy + .026, .012, 7, 1, 160);
+  }, (function () {
+    // die Sonne sinkt mit dem Scrollen, was unter dem Horizont liegt, ist nicht zu sehen; in der Finca gehen die Lichter an
+    function sink(lk) { MY += .04 * lk; if (MY > W6.hy - .007) MA = 0; }
+    var m = {
+      1: function (t, lk, k) { MA = .85 + .15 * Math.sin(t * 2 + k * 30); MS = 2.4; sink(lk); },
+      2: function (t, lk) { sink(lk); },
+      3: function (t, lk, k) { MA = .55 + .4 * Math.pow(Math.max(0, Math.sin(t * 1.2 + k * 9)), 2); sink(lk); },
+      4: function (t, lk, k) { MX += Math.sin(t * 1.3 + MY * 70) * .006; MA = .5 + .45 * Math.pow(Math.sin(t * 1.7 + MY * 90 + k * 3), 2); },
+      6: function (t, lk, k) { MA = .5 + .45 * Math.pow(Math.sin(MX * 38 + MY * 70 - t * 1.8), 2); MS = 2.2; },
+      7: function (t) { rot(W6.cx, W6.cy, Math.sin(t * .8) * .03); }
+    }, q;
+    function lamp(th) { return function (t, lk) { if (th < .1 + lk * .9) { MA = 1; MS = 2.4; } else { MA = .3; MR = 4; } }; }
+    for (q = 0; q < 10; q++) m[10 + q] = lamp(q / 10);
+    return m;
+  })());
+
+  /* Auftakt zu Kapitel 7: sechs Keime, aus jedem wird eine Welt */
   FORM.seeds = {
-    name: 'Fünf Welten',
+    name: 'Sechs Welten',
     init: function () {},
     run: function (o, p, t) {
       var i, j, f, q, c, s = G.pic.seedS, n, br;
       for (i = 0; i < N; i++) {
-        j = i % 5; f = PICS[j].pts; n = f.length; q = f[(Math.floor(i / 5) * 37) % n]; c = G.seed(j);
+        j = i % NS; f = PICS[j].pts; n = f.length; q = f[(Math.floor(i / NS) * 37) % n]; c = G.seed(j);
         br = .5 + .5 * Math.sin(t * 1.4 - j * .9);
         o.x[i] = c[0] + (q[0] - .5) * s; o.y[i] = c[1] + (q[1] - .5) * s + Math.sin(t * .8 + j) * 3;
         o.a[i] = .7 + .3 * br; o.s[i] = q[4] ? 2.2 : 1.5; o.r[i] = 0;
+        if (j === 5 && q[2] > 0 && q[2] < 4 && q[1] > W6.hy - .007) o.a[i] = 0;   // die Sonne steht auch im Keim auf dem Horizont
       }
     },
     decor: function (w, p, t) {
       var j, c, s = G.pic.seedS;
       ctx.globalCompositeOperation = 'source-over'; monoFont(M ? 8 : 10); ctx.fillStyle = FG[2]; ctx.strokeStyle = FG[2]; ctx.lineWidth = 1;
-      for (j = 0; j < 5; j++) {
+      for (j = 0; j < NS; j++) {
         c = G.seed(j); ctx.globalAlpha = .75 * w;
         label('0' + (j + 1), c[0] - s * .5, c[1] + s * .62 + 10, 'left', 1.6);
         ctx.globalAlpha = .4 * w; ctx.beginPath(); ctx.moveTo(c[0] - s * .5, c[1] + s * .62 - 2.5); ctx.lineTo(c[0] + s * .5, c[1] + s * .62 - 2.5); ctx.stroke();
@@ -1256,7 +1327,7 @@
     },
     post: function (w, p, t) {
       // zwei Punkte, einer von dir, einer von mir, treffen sich in der Mitte
-      var E = G.eye, cx = (E.x0 + E.x1) / 2, k = eio(seg(p, 83.2, 91.2)), xa = lerp(E.x0, cx - 7, k), xb = lerp(E.x1, cx + 7, k), meet = sstep(91.0, 91.8, p);
+      var E = G.eye, cx = (E.x0 + E.x1) / 2, k = eio(seg(p, late(83.2), late(91.2))), xa = lerp(E.x0, cx - 7, k), xb = lerp(E.x1, cx + 7, k), meet = sstep(late(91.0), late(91.8), p);
       var y = G.hor, br = 1 + .06 * Math.sin(t * .8), ly = y + (M ? 25 : 28), g;
       ctx.globalCompositeOperation = 'source-over';
       if (worldAt(cx, y) !== 1) return;
@@ -1305,7 +1376,7 @@
         this.g = Math.sqrt(2500 / nb);
       },
       run: function (o, p, t) {
-        var L = G.logo, u = L.S / 128, x0 = L.cx - 64 * u, y0 = L.cy - 64 * u, i, k, tw, rise = seg(p, 95.6, 100), gr = lerp(.55, 1, eo(rise)), hb, ht;
+        var L = G.logo, u = L.S / 128, x0 = L.cx - 64 * u, y0 = L.cy - 64 * u, i, k, tw, rise = seg(p, late(95.6), 100), gr = lerp(.55, 1, eo(rise)), hb, ht;
         for (i = 0; i < N; i++) {
           k = kd[i];
           if (k === 0) {
@@ -1347,9 +1418,10 @@
     { n: 'w2', a: WA[1] + .95, b: WA[2] - .02, st: 'wipe', wi: 8, wl: .35 },
     { n: 'w3', a: WA[2] + .95, b: WA[3] - .02, st: 'wipe', wi: 9, wl: .35 },
     { n: 'w4', a: WA[3] + .95, b: WA[4] - .02, st: 'wipe', wi: 10, wl: .35 },
-    { n: 'w5', a: WA[4] + .95, b: 82.18, st: 'wipe', wi: 11, wl: .35 },
-    { n: 'horizon', a: 83.5, b: 93.95, st: 'wipe', wi: 12 },
-    { n: 'logo', a: 95.6, b: 100, st: 'wipe', wi: 13, sw: .25 }
+    { n: 'w5', a: WA[4] + .95, b: WA[5] - .02, st: 'wipe', wi: 11, wl: .35 },
+    { n: 'w6', a: WA[5] + .95, b: K8 - .02, st: 'wipe', wi: 12, wl: .35 },
+    { n: 'horizon', a: late(83.5), b: late(93.95), st: 'wipe', wi: 13 },
+    { n: 'logo', a: late(95.6), b: 100, st: 'wipe', wi: 14, sw: .25 }
   ];
   var cur = { fa: null, fb: null, m: 0 };
 
@@ -1542,9 +1614,10 @@
     ctx.globalAlpha = 1;
     for (i = 0; i < WIPES.length; i++) {
       w = WIPES[i];
-      if (w.type || w.dur < .8) continue;
-      if (p > w.at - 1.1 && p < w.at + .5) {
-        var o = w.o(), ap = sstep(w.at - 1.1, w.at - .5, p) * (1 - sstep(w.at + .15, w.at + .5, p)), tr2 = 1 - eo(seg(p, w.at - 1.1, w.at - .1)), press = 1 - .22 * sstep(w.at - .12, w.at, p) * (1 - sstep(w.at, w.at + .25, p));
+      if (w.type || w.dur < .8 * (w.at > K8 ? KL : 1)) continue;
+      var ks = w.at > K8 ? KL : 1;
+      if (p > w.at - 1.1 * ks && p < w.at + .5 * ks) {
+        var o = w.o(), ap = sstep(w.at - 1.1 * ks, w.at - .5 * ks, p) * (1 - sstep(w.at + .15 * ks, w.at + .5 * ks, p)), tr2 = 1 - eo(seg(p, w.at - 1.1 * ks, w.at - .1 * ks)), press = 1 - .22 * sstep(w.at - .12 * ks, w.at, p) * (1 - sstep(w.at, w.at + .25 * ks, p));
         if (i === 1) continue;   // hier klickt der grosse Zeiger selbst
         var ww = worldAt(o[0] + 90 * tr2 + 6, o[1] + 120 * tr2 + 8);
         arrow(o[0] + 90 * tr2, o[1] + 120 * tr2, (M ? 30 : 38) * press, FG[ww], BG[ww], ap);
@@ -1559,7 +1632,7 @@
     HT = (M ? 3.4 : 4.4) * REM; HB = (M ? 3 : 3.6) * REM; IX = M ? 0 : 6 * REM;
     dpr = Math.max(1, Math.min(win.devicePixelRatio || 1, 2, Math.sqrt(6.5e6 / (W * H))));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    S2 = M ? .14 : .12;
+    MAP = M ? MAP_M : MAP_D;
     if (!keep || maxScroll < 2) maxScroll = Math.max(1, Math.round(((M ? LEN_M : LEN_D) - 1) * H));
     trackH = Math.round(H + (1 - pBase) * maxScroll);
     track.style.height = trackH + 'px';
@@ -1572,8 +1645,9 @@
     G.logo = M ? { cx: W * .5, cy: H * .2, S: H * .22 } : { cx: W * .79, cy: H * .45, S: H * .52 };
     G.hor = M ? H * .44 : H * .56;
     G.eye = M ? { x0: W * .1, x1: W * .9 } : { x0: Math.max(W * .095, 9 * REM), x1: W * .94 };
-    G.pic = M ? { cx: W * .5, cy: H * .3, s: Math.min(W * .78, H * .36), seedS: W * .17 } : { cx: W * .72, cy: H * .45, s: H * .6, seedS: H * .14 };
-    G.seed = M ? function (j) { var s = W * .17, y0 = Math.min(H * .5, (G.seedTop || H) - s * .62 - 30), st = Math.min(H * .075, (y0 - HT - 14 - s * .5) / 4); return [W * (.14 + .18 * j), y0 - st * j]; } : function (j) { return [W * (.55 + .092 * j), H * (.72 - .115 * j)]; };
+    G.pic = M ? { cx: W * .5, cy: H * .3, s: Math.min(W * .78, H * .36), seedS: (W - 2.2 * REM - 16) / 6.4 } : { cx: W * .72, cy: H * .45, s: H * .6, seedS: Math.min(H * .118, W * .07) };
+    /* sechs Keime als Treppe: am Handy zwischen Schiene und rechtem Rand, am Desktop rechts neben dem Text */
+    G.seed = M ? function (j) { var s = G.pic.seedS, y0 = Math.min(H * .5, (G.seedTop || H) - s * .62 - 30), st = Math.min(H * .06, (y0 - HT - 14 - s * .5) / (NS - 1)); return [1.1 * REM + 9 + s * (.5 + 1.08 * j), y0 - st * j]; } : function (j) { return [W * (.545 + .075 * j), H * (.735 - .095 * j)]; };
     var F_;
     if (M) {
       var ltE = doc.getElementById('loop-t'), ltH = Math.max(86, ltE ? ltE.offsetHeight : 0);
@@ -1911,7 +1985,7 @@
     ft(wh, 72.1, 72.38, { autoAlpha: 1, x: 0 }, { autoAlpha: 0, x: -W * .32 }, 'power2.in');
     calm(wh, 69.4, .4, 72.1, .3, .92);
     $$('.card').forEach(function (c, j) {
-      var a = WA[j], inn = $('.card-in', c), dir = j % 2 ? -1 : 1, b = a + WL - (j === 4 ? .35 : .15);
+      var a = WA[j], inn = $('.card-in', c), dir = j % 2 ? -1 : 1, b = a + WL - .15;
       mark(c, a + .25, a + WL + .1);
       ft(c, a + .28, a + .3, { autoAlpha: 0 }, { autoAlpha: 1 }, 'none');
       ft(inn, a + .3, a + .68, { opacity: 0, rotationY: dir * 70, x: dir * W * .06, transformPerspective: 1300, transformOrigin: (dir > 0 ? '0% 50%' : '100% 50%') }, { opacity: 1, rotationY: 0, x: 0 }, 'power3.out');
@@ -1921,23 +1995,23 @@
     });
 
     /* K8: die Saetze stehen abwechselnd ueber und unter der Linie und loesen sich ueberlappend ab */
-    beat('.b8a h2', { a: 82.65, din: .35, b: 84.6, dout: .4, calm: 0 });
-    calm($('.b8a h2'), 82.6, .2, 83.5, .5, .9);
+    beat('.b8a h2', { a: late(82.65), din: .35 * KL, b: late(84.6), dout: .4 * KL, calm: 0 });
+    calm($('.b8a h2'), late(82.6), .2 * KL, late(83.5), .5 * KL, .9);
     /* drei Schlaege unter der Linie: jeder kommt fuer sich und bleibt stehen */
-    var q3 = $('.q3'); mark(q3, 84.7, 88.1); show(q3, 84.7);
-    $$('.q3 > span').forEach(function (s, j) { ft(s, 84.75 + j * .85, 85.15 + j * .85, { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0 }); });
-    ft(q3, 87.7, 88.05, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
-    beat('.b8c p', { a: 87.8, din: .45, b: 89.7, dout: .35, calm: 0 });
-    beat('.b8d p', { a: 89.75, din: .45, b: 91.6, dout: .35, calm: 0 });
-    beat('.b8e p', { a: 91.65, din: .45, b: 93.7, dout: .3, calm: 0 });
+    var q3 = $('.q3'); mark(q3, late(84.7), late(88.1)); show(q3, late(84.7));
+    $$('.q3 > span').forEach(function (s, j) { ft(s, late(84.75 + j * .85), late(85.15 + j * .85), { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0 }); });
+    ft(q3, late(87.7), late(88.05), { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
+    beat('.b8c p', { a: late(87.8), din: .45 * KL, b: late(89.7), dout: .35 * KL, calm: 0 });
+    beat('.b8d p', { a: late(89.75), din: .45 * KL, b: late(91.6), dout: .35 * KL, calm: 0 });
+    beat('.b8e p', { a: late(91.65), din: .45 * KL, b: late(93.7), dout: .3 * KL, calm: 0 });
 
     /* K9 */
-    var ct = $('.contact'); mark(ct, 94.7, 100); show(ct, 94.7);
-    ft('.s9 .eyebrow', 94.75, 95.15, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0 });
-    $$('.name .nl > span').forEach(function (s, j) { ft(s, 94.85 + j * .2, 95.45 + j * .2, { yPercent: 118 }, { yPercent: 0 }); });
-    ft('.s9 .lead', 95.45, 95.85, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0 });
-    $$('.ways li').forEach(function (li, j) { ft(li, 95.7 + j * .15, 96.15 + j * .15, { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0 }); });
-    calm(ct, 94.8, .8, 101, 1, .9);
+    var ct = $('.contact'); mark(ct, late(94.7), 100); show(ct, late(94.7));
+    ft('.s9 .eyebrow', late(94.75), late(95.15), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0 });
+    $$('.name .nl > span').forEach(function (s, j) { ft(s, late(94.85 + j * .2), late(95.45 + j * .2), { yPercent: 118 }, { yPercent: 0 }); });
+    ft('.s9 .lead', late(95.45), late(95.85), { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0 });
+    $$('.ways li').forEach(function (li, j) { ft(li, late(95.7 + j * .15), late(96.15 + j * .15), { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0 }); });
+    calm(ct, late(94.8), .8 * KL, 101, 1, .9);
   }
 
   /* Verb-Chip: die Breite folgt dem Wort */
@@ -1977,11 +2051,11 @@
     if (ch !== hudS.ch) { hudS.ch = ch; roC.textContent = pad(ch, 2); roN.textContent = CHN[ch]; idxA.forEach(function (a, j) { if (j === ch) { a.classList.add('on'); a.setAttribute('aria-current', 'true'); } else { a.classList.remove('on'); a.removeAttribute('aria-current'); } }); }
     railFill.style.transform = 'scaleY(' + (p / 100).toFixed(4) + ')';
     railDot.style.transform = 'translateY(' + (p / 100 * G.railH).toFixed(1) + 'px)';
-    e = p > 96.6;
+    e = p > late(96.6);
     if (e !== hudS.foot) { hudS.foot = e; foot.classList.toggle('on', e); body.classList.toggle('end', e); }
     var lg = !M && p > 57.8 && p < 69.2;
     if (lg !== hudS.leg) { hudS.leg = lg; if (roXY) roXY.style.visibility = lg ? 'hidden' : ''; }
-    for (i = 0; i < ths.length; i++) { var h = ths[i], w = worldAt(h.x, h.y); if (w !== h.w) { h.w = w; h.el.classList.remove('t-k', 't-i', 't-g', 't-d', 't-m'); h.el.classList.add('t-' + WN[w]); } }
+    for (i = 0; i < ths.length; i++) { var h = ths[i], w = worldAt(h.x, h.y); if (w !== h.w) { h.w = w; h.el.classList.remove('t-k', 't-i', 't-g', 't-d', 't-m', 't-e'); h.el.classList.add('t-' + WN[w]); } }
   }
   var mqs = $$('.mq');
   function marquee(p, t) {
@@ -2071,10 +2145,11 @@
     if (halt && f.run && lenis) { try { lenis.reset(); } catch (e) {} }
   }
   function onVirtual(d) {
-    // Rad nach unten waehrend des Flugs: der Film nimmt das Ziel des Flugs mit und laeuft von dort weiter
+    // Rad nach unten waehrend des Flugs: der Film nimmt das Ziel des Flugs mit und laeuft von dort weiter.
+    // Bei einem Sprung ueber den Kapitelindex uebernimmt das Rad an der Stelle, an der der Film gerade steht.
     if (!fly) return true;
     var e = d.event, dy = d.deltaY, f = fly;
-    if (e && e.type && e.type.indexOf('wheel') > -1 && dy > 0 && lenis && lenis.targetScroll < f.y) {
+    if (!f.idx && e && e.type && e.type.indexOf('wheel') > -1 && dy > 0 && lenis && lenis.targetScroll < f.y) {
       flyEnd(false);
       try { if (e.cancelable) e.preventDefault(); lenis.scrollTo(f.y + dy, { programmatic: false, lerp: .1, force: true }); return false; } catch (er) {}
       return true;
@@ -2086,7 +2161,7 @@
     if (lenis || DEBUG || !win.Lenis) return;
     try { lenis = new win.Lenis({ lerp: .1, smoothWheel: true, wheelMultiplier: 1.4, virtualScroll: onVirtual }); } catch (e) { lenis = null; }
   }
-  function jump(pu, immediate, ms, free) {
+  function jump(pu, immediate, ms, free, ease) {
     var y = scrollFor(clamp(pu, 0, 100) / 100);
     if (immediate) {
       if (lenis) { try { lenis.scrollTo(y, { immediate: true, force: true }); } catch (e) {} }
@@ -2096,12 +2171,21 @@
       return;
     }
     ms = ms || 1800;
-    var ez = free ? eq : eio;
-    if (lenis) { try { lenis.scrollTo(y, { duration: ms / 1000, easing: ez, force: true, lock: !free, onComplete: function () { if (free) flyEnd(false); } }); return; } catch (e) {} }
-    var y0 = win.pageYOffset, t0 = performance.now(), done = false, me = free ? fly : null;
-    function fin() { if (done) return; done = true; if (me && me.dead) return; win.scrollTo(0, y); if (me) flyEnd(false); }
+    var ez = ease || (free ? eq : eio), me = free ? fly : null;
+    function arrive() { if (!me || me.dead || fly !== me) return; var cb = me.after; flyEnd(false); if (cb) cb(); }
+    if (lenis) { try { lenis.scrollTo(y, { duration: ms / 1000, easing: ez, force: true, lock: !free, onComplete: arrive }); return; } catch (e) {} }
+    var y0 = win.pageYOffset, t0 = performance.now(), done = false;
+    function fin() { if (done) return; done = true; if (me && me.dead) return; win.scrollTo(0, y); arrive(); }
     (function step(now) { if (done) return; if (me && me.dead) { done = true; return; } var k = clamp((now - t0) / ms, 0, 1); win.scrollTo(0, y0 + (y - y0) * ez(k)); if (k < 1) requestAnimationFrame(step); else fin(); })(t0);
     setTimeout(fin, ms + 400);
+  }
+  /* Spruenge ueber den Kapitelindex, das Logo und den Kontakt-Link sperren nichts, genau wie der Flug nach der Zuendung:
+     Rad, Finger und Tasten uebernehmen sofort. Wer den Sprung abbricht, behaelt auch den Fokus. */
+  function glide(pu, ms, after) {
+    flyEnd(true);
+    var f = fly = { y: scrollFor(clamp(pu, 0, 100) / 100), run: true, dead: false, tm: 0, net: 0, idx: true, after: after || null };
+    jump(pu, false, ms, true, eio);
+    if (fly === f) f.net = setTimeout(function () { if (fly === f) flyEnd(false); }, ms + 600);
   }
   function impulse(x, y, power) {
     var i, dx, dy, d, f;
@@ -2147,7 +2231,7 @@
     ignite(e.clientX, e.clientY);
   });
   gate.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ignite(); } });
-  win.addEventListener('wheel', function () { nudge(); }, { passive: true });
+  win.addEventListener('wheel', function () { nudge(); if (fly && !locked && !lenis) flyEnd(false); }, { passive: true });
   var SCROLLKEYS = ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'End', 'Home', ' ', 'Spacebar'];
   win.addEventListener('keydown', function (e) {
     if (dlgOpen) return;
@@ -2211,8 +2295,8 @@
     a.addEventListener('click', function (e) {
       var m = /^#k(\d)$/.exec(a.getAttribute('href') || ''); if (!m) return;
       e.preventDefault(); if (locked) return;
-      jump(CHJ[+m[1]], false, 1900);
-      var s = doc.getElementById('k' + m[1]); if (s) setTimeout(function () { try { s.focus({ preventScroll: true }); } catch (er) {} }, 2000);
+      var s = doc.getElementById('k' + m[1]);
+      glide(CHJ[+m[1]], 1900, function () { if (s) setTimeout(function () { try { s.focus({ preventScroll: true }); } catch (er) {} }, 100); });
     });
   });
   win.addEventListener('hashchange', function () { var n = dlgHash(), t; if (n) { dlgShow(n, $('#foot a[href^="' + n + '"]')); return; } t = hashTarget(); if (t === null) return; if (locked) open(false); jump(t, true); });
