@@ -51,11 +51,18 @@
   /* ---------- Grundzustand ---------- */
   var W = 0, H = 0, M = false, dpr = 1, N = 0, maxScroll = 1, trackH = 0;
   var REM = 16, HT = 70, HB = 58, IX = 96;   // HUD-Baender und Spalte des Kapitelindex
-  var LEN_D = 44, LEN_M = 28;                // Filmlaenge in Bildschirmhoehen
+  var LEN_D = 36, LEN_M = 24;                // Filmlaenge in Bildschirmhoehen
+  /* Scroll und Film laufen nicht im selben Takt: Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten
+     Stueck der Strecke (S2), danach laeuft der Film gleichmaessig. Alle Zeiten im Code bleiben Filmzeit. */
+  var P2 = .164, S2 = .12;
+  function s2p(s) { return s <= S2 ? s * P2 / S2 : P2 + (s - S2) * (1 - P2) / (1 - S2); }
+  function p2s(q) { return q <= P2 ? q * S2 / P2 : S2 + (q - P2) * (1 - S2) / (1 - P2); }
+  function filmAt(y) { return DEBUG ? clamp(pBase + y / maxScroll, 0, 1) : s2p(clamp(y / maxScroll, 0, 1)); }
+  function scrollFor(q) { return Math.max(0, Math.round(DEBUG ? (q - pBase) * maxScroll : p2s(clamp(q, 0, 1)) * maxScroll)); }
   var pBase = DEBUG ? DEBUG_P : 0;   // Debug: der Film beginnt an dieser Stelle, das Fenster bleibt bei Scroll 0
   var T = 20, last = 0, raf = 0;
   var pT = 0, pS = 0, pPrev = 0, vel = 0;
-  var locked = true, clicks = 0, hudK = 0, openT = -1;
+  var locked = true, hudK = 0, openT = -1;
   var lenis = null;
   var touch = win.matchMedia && win.matchMedia('(pointer: coarse)').matches;
   var mouse = { x: -9999, y: -9999, nx: 0, ny: 0, sx: 0, sy: 0, on: false };
@@ -64,7 +71,7 @@
   var flash = doc.createElement('div'); flash.className = 'flash'; flash.setAttribute('aria-hidden', 'true'); body.appendChild(flash);
 
   var CH = [0, 2.6, 16.4, 26, 38.2, 45.6, 55.4, 69.1, 82.2, 94.0];
-  var CHJ = [0, 4.7, 19.6, 28.2, 40.3, 48, 59.5, 71.1, 84, 99.6];
+  var CHJ = [0, 3.5, 19.6, 28.2, 40.3, 48, 59.5, 71.1, 84, 99.6];
   var CHN = ['Start', 'Die Geschichte', 'Das Problem', 'Das Wissen', 'Die Arbeit', 'Die Werkzeuge', 'Der Weg', 'Für wen', 'Das erste Gespräch', 'Kontakt'];
   var WA = [72.3, 74.3, 76.3, 78.3, 80.3], WL = 2;   // die fuenf Welten in Kapitel 7
 
@@ -125,12 +132,12 @@
 
   var WIPES = [
     { at: PZ.a, dur: PZ.b - PZ.a, to: 2, type: 'rect', o: function () { return [PZ.cx, PZ.cy]; } },
-    { at: 6.5, dur: 1.0, to: 0, o: function () { return [G.cur.tx, G.cur.ty]; } },
-    { at: 26.0, dur: 1.3, to: 1, o: function () { return [W * .5, H * .55]; } },
+    { at: 6.0, dur: 1.0, to: 0, o: function () { return [G.cur.tx, G.cur.ty]; } },
+    { at: 26.0, dur: 1.3, to: 1, o: function () { return FORM.leak.gap(1); } },
     { at: 38.2, dur: 1.3, to: 0, type: 'bars', o: function () { return [W * .5, H]; } },
     { at: 45.6, dur: 1.2, to: 2, o: function () { var I = G.icon, u = I.S / 128; return [I.cx + 24 * u, I.cy - 20 * u]; } },
     { at: 55.4, dur: 1.0, to: 0, o: function () { return G.fun.vert ? [G.fun.cc, H * .16] : [W * .1, G.fun.cc]; } },
-    { at: 69.1, dur: .6, to: 2, o: function () { return G.fun.vert ? [G.fun.mb.x[2], G.fun.mb.base - G.fun.mb.h[2]] : [G.fun.bx[2], G.fun.c - G.fun.bh[2]]; } },
+    { at: 69.1, dur: .6, to: 2, o: function () { var K = G.fun.mk; return [K.ox + 88 * K.u, K.oy + 31 * K.u]; } },
     { at: WA[0], dur: .6, to: 0, o: function () { return G.seed(0); } },
     { at: WA[1], dur: .6, to: 1, o: function () { return [G.pic.cx, G.pic.cy]; } },
     { at: WA[2], dur: .6, to: 2, o: function () { return [G.pic.cx, G.pic.cy]; } },
@@ -280,8 +287,9 @@
         gs = g;
       },
       run: function (o, p, t) {
-        var C = G.cur, press = 1 - .05 * sstep(6.1, 6.5, p), k = C.k * press, i, q, rr, an, RM = Math.sqrt(W * W + H * H) * .8, fl = t * .07 + p * .22, a, sz = Math.max(1.8, gs * C.k * .62);
-        var tx = C.tx + (1 - press) * 40, ty = C.ty + (1 - press) * 40;
+        // der Zeiger faehrt mit jedem Stueck Scroll auf seinen Klickpunkt zu und wird groesser, die Wellen laufen mit
+        var C = G.cur, ap = seg(p, 2.4, 5.6), press = 1 - .05 * sstep(5.6, 6.0, p), k = C.k * lerp(.8, 1, ap) * press, i, q, rr, an, RM = Math.sqrt(W * W + H * H) * .8, fl = t * .07 + p * .5, a, sz = Math.max(1.8, gs * k * .62);
+        var tx = C.tx + (1 - ap) * W * (M ? .05 : .075) + (1 - press) * 40, ty = C.ty + (1 - ap) * H * (M ? .07 : .12) + (1 - press) * 40;
         for (i = 0; i < N; i++) {
           if (kd[i]) {
             o.x[i] = tx + lx[i] * k; o.y[i] = ty + ly[i] * k;
@@ -297,54 +305,10 @@
     };
   })();
 
-  /* 2 · Zwei Namen, geschrieben aus Klicks. Reiner Text, keine Marken, keine Farben. */
-  FORM.words = (function () {
-    var wx, wy, isW, asz = 8, n1 = 0, n2 = 0;
-    function sample(word, Lw, sp, maxN) {
-      var c = doc.createElement('canvas'), fs = 200, x0 = 30, base = 232; c.width = 1500; c.height = 330;
-      var x = c.getContext('2d', { willReadFrequently: true });
-      x.font = '800 ' + fs + 'px Manrope, system-ui, sans-serif';
-      try { x.letterSpacing = '-8px'; } catch (e) {}
-      x.textBaseline = 'alphabetic'; x.fillStyle = '#fff';
-      var w = x.measureText(word).width || 700; x.fillText(word, x0, base);
-      var d, stp = sp * w / Lw, pts = [], xx, yy, row = 0;
-      try { d = x.getImageData(0, 0, c.width, c.height).data; } catch (e2) { return { pts: [], w: w }; }
-      for (;;) {
-        pts.length = 0; row = 0;
-        for (yy = stp / 2; yy < c.height; yy += stp * .9, row++) for (xx = stp / 2 + (row % 2 ? stp / 2 : 0); xx < c.width; xx += stp) if (d[(Math.round(yy) * c.width + Math.round(xx)) * 4 + 3] > 128) pts.push([(xx - x0) / w, (yy - base) / w]);
-        if (pts.length <= maxN) break; stp *= 1.06;
-      }
-      return { pts: pts, stp: stp * Lw / w };
-    }
-    return {
-      name: 'Schrift',
-      init: function () {
-        wx = new Float32Array(N); wy = new Float32Array(N); isW = new Uint8Array(N);
-        var per = FORM.towers.per || Math.floor(N * .3), L = G.wd, sp = M ? 5.4 : 7, a = sample('Google.', L[0].w, sp, per), b = sample('Meta.', L[1].w, sp, per), i, q, pa = shuffle(Math.max(1, a.pts.length), 21), pb = shuffle(Math.max(1, b.pts.length), 22);
-        n1 = a.pts.length; n2 = b.pts.length;
-        for (i = 0; i < n1; i++) { q = a.pts[pa[i]]; wx[i] = L[0].x + q[0] * L[0].w; wy[i] = L[0].y + q[1] * L[0].w; isW[i] = 1; }
-        for (i = 0; i < n2; i++) { q = b.pts[pb[i]]; wx[per + i] = L[1].x + q[0] * L[1].w; wy[per + i] = L[1].y + q[1] * L[1].w; isW[per + i] = 1; }
-        asz = Math.max(a.stp || sp, b.stp || sp) * 1.5;
-      },
-      run: function (o, p, t) {
-        FORM.towers.run(o, Math.min(p, 10.4), t);
-        var z = lerp(.95, 1.07, seg(p, 7, 10.6)), cx = W * .5, cy = H * .56, i, tw, nT = FORM.towers.per * 2;
-        for (i = 0; i < N; i++) {
-          if (isW[i]) {
-            tw = .8 + .2 * Math.sin(t * 1.7 + R4[i] * 40);
-            o.x[i] = cx + (wx[i] - cx) * z; o.y[i] = cy + (wy[i] - cy) * z;
-            o.a[i] = (R3[i] < .16 ? 1 : .9) * tw; o.s[i] = asz * z; o.r[i] = R3[i] < .16 ? 1 : 0; o.g[i] = 1;
-          } else if (i < nT) o.a[i] *= .3;
-          else o.a[i] *= .7;
-        }
-      }
-    };
-  })();
-
-  /* 3 · Tuerme aus Klicks */
+  /* 2 · Tuerme aus Klicks. Die beiden Namen stehen als Schrift am Fuss ihres Turms (HTML). */
   FORM.towers = (function () {
     var wx, wy, wz, kind, rowsH, D = 6, RH = .95, TA = 12, TW = 6;
-    var K0 = 9.7, K1 = 16.7;
+    var K0 = 9.7, K1 = 16.7, KA = 6.0, KB = 9.4;
     function pr(c, x, y, z) { var cp = Math.cos(c.pitch), sp = Math.sin(c.pitch), Yc = y - c.camH, Zc = z + c.camD, Z2 = Yc * sp + Zc * cp; if (Z2 < .5) Z2 = .5; return [c.cx + x * c.f / Z2, c.cy - (Yc * cp - Zc * sp) * c.f / Z2, Z2]; }
     return {
       name: 'Türme',
@@ -372,18 +336,18 @@
         var k = seg(p, K0, K1);
         return {
           k: k,
-          camD: lerp(80, 15.5, eo(seg(k, 0, .6))),
+          camD: lerp(60, 16.4, eo(seg(p, KA, KB))) - .9 * seg(p, KB, 13.5),
           pitch: lerp(.05, .56, eio(seg(k, 0, .72))),
           camH: 1.4 + 14 * sstep(.62, 1, k),
           f: H * .56,
           cx: W * .5,
           cy: H * lerp(.7, .58, eio(seg(k, .1, .7))),
-          built: lerp(14, rowsH, eio(seg(k, 0, .34)))
+          built: lerp(10, rowsH, eio(seg(p, 6.3, 10.8)))
         };
       },
       run: function (o, p, t) {
         var c = this.cam(p), cp = Math.cos(c.pitch), sp = Math.sin(c.pitch), f = c.f, cx = c.cx, cy = c.cy, built = c.built;
-        var pulse = fract(t * .08 + p * .11) * (built + 24) - 12;
+        var pulse = fract(t * .08 + p * .16) * (Math.min(built, 60) + 24) - 12;
         var i, kd, Xw, Yw, Zw, am, over, Yc, Zc, Y2, Z2, sc, fog, tw, band;
         for (i = 0; i < N; i++) {
           kd = kind[i];
@@ -431,7 +395,7 @@
         ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
         ctx.globalCompositeOperation = 'source-over';
         // Stockwerke am rechten Turm: die Kamera steigt, die Marken wandern
-        var lw = w * sstep(.12, .3, c.k);
+        var lw = w * sstep(8.2, 9.2, p);
         if (lw > .02 && !M) {
           monoFont(9);
           for (j = 1; j < 14; j++) {
@@ -441,18 +405,6 @@
             ctx.beginPath(); ctx.moveTo(q[0] - 26, q[1] + .5); ctx.lineTo(q[0] - 6, q[1] + .5); ctx.stroke();
             ctx.globalAlpha = lw * .62; ctx.fillStyle = FG[0]; label('E ' + j * 10, q[0] - 32, q[1], 'right', 1.2);
           }
-          ctx.globalAlpha = 1;
-        }
-        // winziger Betrachter: ein Mauszeiger am Fuss der Tuerme, das bist du
-        var Yc = 0 - c.camH, Zc = -6.5 + c.camD, Y2 = Yc * cp - Zc * sp, Z2 = Yc * sp + Zc * cp;
-        if (Z2 < 2) return;
-        var sc = c.f / Z2, x = c.cx, y = c.cy - Y2 * sc, sz = clamp(sc * .42, 6, 26);
-        if (y > H - HB - 6) return;
-        arrow(x - sz * .2, y - sz, sz, FG[0], BG[0], w * .95);
-        if (lw > .02) {
-          ctx.globalAlpha = lw * .9; ctx.strokeStyle = ACC[0]; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(x + sz * .9, y - sz * .45); ctx.lineTo(x + sz * .9 + 34, y - sz * .45); ctx.stroke();
-          monoFont(10); ctx.fillStyle = ACC[0]; label('DU', x + sz * .9 + 42, y - sz * .45, 'left', 2);
           ctx.globalAlpha = 1;
         }
       }
@@ -510,61 +462,111 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  /* 5 · Das Leck: zwischen Klick und Kauf passt nichts zusammen, an jeder Fuge verbrennen Klicks */
+  /* 5 · Die Luecken: ein Funnel aus vier Stuecken, dazwischen drei kleine Luecken. Durch jede faellt ein Teil der Klicks
+     und verglueht. In Kapitel 3 rastet das Bild ein: die Stuecke richten sich aus, dieselben Luecken schliessen sich. */
   FORM.leak = (function () {
-    var JO = [.25, .5, .75], DY = [0, .8, -.7, .55], TI = [-.9, 1, -.8, .7];
+    var JO = [.25, .5, .75], DY = [0, .7, -.6, .5], TI = [-.8, .9, -.7, .6], HA = [26.8, 26.45, 26.8];
+    var al = 0, hj = [0, 0, 0], gp = 0;
+    function state(p) {
+      al = eio(seg(p, 26.3, 27.05));
+      for (var j = 0; j < 3; j++) hj[j] = sstep(HA[j], HA[j] + .5, p);
+      gp = (M ? 9 : 17) / (G.leak.xb - G.leak.xa);   // halbe Luecke in Streckenanteilen
+    }
     function q4(s) { return s < JO[0] ? 0 : s < JO[1] ? 1 : s < JO[2] ? 2 : 3; }
-    function pipeY(s) { var L = G.leak, q = q4(s), s0 = q ? JO[q - 1] : 0, s1 = q < 3 ? JO[q] : 1; return L.y + (DY[q] + TI[q] * ((s - s0) / (s1 - s0) - .5)) * L.hw; }
+    function pipeY(s) { var L = G.leak, q = q4(s), s0 = q ? JO[q - 1] : 0, s1 = q < 3 ? JO[q] : 1; return L.y + (DY[q] + TI[q] * ((s - s0) / (s1 - s0) - .5)) * L.hw * (1 - al); }
     function xAt(s) { return lerp(G.leak.xa, G.leak.xb, s); }
+    /* Linie, die an jeder Stelle die Farbe ihrer Welt traegt (der Wischer laeuft mitten durch das Bild) */
+    function wline(x0, y0, x1, y1, n) {
+      var i, ax, ay, bx, by;
+      for (i = 0; i < n; i++) {
+        ax = lerp(x0, x1, i / n); ay = lerp(y0, y1, i / n); bx = lerp(x0, x1, (i + 1) / n); by = lerp(y0, y1, (i + 1) / n);
+        ctx.strokeStyle = FG[worldAt((ax + bx) / 2, (ay + by) / 2)];
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+    }
     return {
-      name: 'Leck',
+      name: 'Lücken',
       init: function () {},
+      gap: function (j) { return [xAt(JO[j]), G.leak.y]; },
       run: function (o, p, t) {
-        var L = G.leak, hw = L.hw, i, u, f, jl, tau, x, y, a, s, r, fate, dir, fl;
+        state(p);
+        var L = G.leak, hw = L.hw, i, u, f, jl, tau, x, y, a, s, r, fate, fl, done = al > .98 && hj[0] > .98;
         for (i = 0; i < N; i++) {
           u = fract(R1[i] + t * (.035 + .04 * R3[i]) + p * .04);
           f = R4[i]; fate = f < .3 ? 0 : f < .58 ? 1 : f < .86 ? 2 : 3;
           jl = fate < 3 ? JO[fate] : 2;
+          if (fate < 3 && hj[fate] > R2[i] * .98) jl = 2;          // die Luecke ist zu: dieser Klick bleibt im Funnel
           if (u > jl) {
-            tau = (u - jl) / .34;
-            if (tau >= 1) { o.x[i] = xAt(jl); o.y[i] = pipeY(jl) - L.rise; o.a[i] = 0; o.s[i] = 1; o.r[i] = 3; continue; }
-            dir = R2[i] < .5 ? -1 : 1; fl = .7 + .3 * Math.sin(t * 9 + R4[i] * 50);
-            x = xAt(jl) + dir * (6 + 70 * tau * R3[i]) + Math.sin(t * (.6 + R3[i]) + R2[i] * 40) * (6 + 46 * tau);
-            y = pipeY(jl) - Math.pow(tau, .8) * L.rise * (.35 + .9 * R2[i]);
-            a = Math.pow(1 - tau, 1.2) * (.55 + .45 * fl); s = 1.4 + 3 * R3[i] * (1 - tau * .6); r = tau < .45 ? 2 : 3;
+            // durch die Luecke nach unten: erst weiss, dann Glut
+            tau = (u - jl) / .3;
+            if (tau >= 1) { o.x[i] = xAt(jl); o.y[i] = pipeY(jl) + hw + L.fall; o.a[i] = 0; o.s[i] = 1; o.r[i] = 3; continue; }
+            fl = .7 + .3 * Math.sin(t * 9 + R4[i] * 50);
+            x = xAt(jl) + (R3[i] - .5) * gp * (L.xb - L.xa) * 1.5 + (R2[i] - .5) * tau * (M ? 26 : 60) + Math.sin(t * (.6 + R3[i]) + R2[i] * 40) * 5 * tau;
+            y = Math.max(pipeY(jl - .001), pipeY(jl + .001)) + hw * .6 + Math.pow(tau, 1.7) * L.fall * (.55 + .45 * R2[i]);
+            a = Math.pow(1 - tau, .9) * (.6 + .4 * fl); s = 1.6 + 2.6 * R3[i] * (1 - tau * .4); r = tau < .16 ? 0 : tau < .55 ? 2 : 3;
           } else {
             x = xAt(u); y = pipeY(u) + (R2[i] - .5) * 1.7 * hw;
-            a = (.55 + .3 * R3[i]) * sstep(0, .03, u); s = 1.5 + 1.2 * R3[i]; r = 0;
-            if (fate === 3 && u > .93) a *= 1 - sstep(.93, 1, u);
+            a = (.55 + .3 * R3[i]) * sstep(0, .03, u) * sstep(1, .97, u); s = 1.5 + 1.2 * R3[i];
+            r = done && u > .5 + R3[i] * .3 ? 1 : 0;
           }
           o.x[i] = x; o.y[i] = y; o.a[i] = a; o.s[i] = s; o.r[i] = r;
         }
       },
       decor: function (w, p, t) {
-        var L = G.leak, hw = L.hw * 1.35, q, s0, s1, x0, x1, y0, y1, j, gx, gy, rad, gr, fl;
-        w *= 1 - sstep(26.0, 26.6, p); if (w < .01) return;
-        glow(w * .62, p, t, .4);
-        ctx.globalCompositeOperation = 'lighter';
-        for (j = 0; j < 3; j++) {
-          gx = xAt(JO[j]); gy = (pipeY(JO[j] - .001) + pipeY(JO[j] + .001)) / 2; fl = 1 + .08 * Math.sin(t * 5 + j * 2);
-          rad = (M ? 70 : 150) * fl; gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
-          gr.addColorStop(0, 'rgba(255,90,42,' + (.4 * w) + ')'); gr.addColorStop(.4, 'rgba(255,46,46,' + (.14 * w) + ')'); gr.addColorStop(1, 'rgba(255,46,46,0)');
-          ctx.fillStyle = gr; ctx.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
+        state(p);
+        var L = G.leak, hw = L.hw * 1.35, q, s0, s1, x0, x1, y0, y1, j, gx, gy, gw, rad, gr, fl, open, k;
+        var emb = w * (1 - sstep(26.0, 26.7, p)), ck;
+        if (w < .01) return;
+        if (emb > .01) {
+          glow(emb * .62, p, t, .4);
+          ctx.globalCompositeOperation = 'lighter';
+          for (j = 0; j < 3; j++) {
+            gx = xAt(JO[j]); gy = Math.max(pipeY(JO[j] - .001), pipeY(JO[j] + .001)) + hw + L.fall * .3; fl = 1 + .08 * Math.sin(t * 5 + j * 2);
+            rad = (M ? 80 : 170) * fl; gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, rad);
+            gr.addColorStop(0, 'rgba(255,90,42,' + (.3 * emb) + ')'); gr.addColorStop(.4, 'rgba(255,46,46,' + (.11 * emb) + ')'); gr.addColorStop(1, 'rgba(255,46,46,0)');
+            ctx.fillStyle = gr; ctx.fillRect(gx - rad, gy - rad, rad * 2, rad * 2);
+          }
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.lineWidth = 1.2; ctx.strokeStyle = FG[0];
+        // die vier Stuecke des Funnels, an jeder Luecke offen
+        ctx.lineWidth = 1.3;
         for (q = 0; q < 4; q++) {
-          s0 = q ? JO[q - 1] : 0; s1 = q < 3 ? JO[q] : 1;
-          x0 = xAt(s0) + (q ? 5 : 0); x1 = xAt(s1) - (q < 3 ? 5 : 0); y0 = pipeY(s0 + .001); y1 = pipeY(s1 - .001);
-          ctx.globalAlpha = .62 * w;
-          ctx.beginPath(); ctx.moveTo(x0, y0 - hw); ctx.lineTo(x1, y1 - hw); ctx.moveTo(x0, y0 + hw); ctx.lineTo(x1, y1 + hw); ctx.stroke();
-          ctx.globalAlpha = .9 * w;
-          ctx.beginPath(); ctx.moveTo(x0, y0 - hw - 5); ctx.lineTo(x0, y0 + hw + 5); ctx.moveTo(x1, y1 - hw - 5); ctx.lineTo(x1, y1 + hw + 5); ctx.stroke();
+          s0 = q ? JO[q - 1] + gp * (1 - hj[q - 1]) : 0; s1 = q < 3 ? JO[q] - gp * (1 - hj[q]) : 1;
+          x0 = xAt(s0); x1 = xAt(s1); y0 = pipeY(s0 + .0005); y1 = pipeY(s1 - .0005);
+          ctx.globalAlpha = .7 * w;
+          wline(x0, y0 - hw, x1, y1 - hw, 10); wline(x0, y0 + hw, x1, y1 + hw, 10);
+          ctx.globalAlpha = .95 * w;
+          if (!q || hj[q - 1] < .99) wline(x0, y0 - hw - 6, x0, y0 + hw + 6, 2);
+          if (q === 3 || hj[q] < .99) wline(x1, y1 - hw - 6, x1, y1 + hw + 6, 2);
         }
-        ctx.strokeStyle = '#ff5a2a'; ctx.lineWidth = 1.6; ctx.globalAlpha = w;
-        for (j = 0; j < 3; j++) { gx = xAt(JO[j]); gy = Math.max(pipeY(JO[j] - .001), pipeY(JO[j] + .001)) + hw + 22; ctx.beginPath(); ctx.moveTo(gx - 5, gy - 5); ctx.lineTo(gx + 5, gy + 5); ctx.moveTo(gx + 5, gy - 5); ctx.lineTo(gx - 5, gy + 5); ctx.stroke(); }
-        monoFont(M ? 9 : 10); ctx.fillStyle = FG[0]; ctx.globalAlpha = .78 * w;
-        label('KLICK', L.xa, L.y - hw - (M ? 18 : 26), 'left', 2); label('KAUF', L.xb, pipeY(.999) - hw - (M ? 18 : 26), 'right', 2);
+        // Luecken: offen mit Marke und Namen, geschlossen mit Haken
+        monoFont(M ? 9 : 10);
+        for (j = 0; j < 3; j++) {
+          gx = xAt(JO[j]); gw = gp * (L.xb - L.xa) * (1 - hj[j]); open = 1 - hj[j];
+          gy = Math.min(pipeY(JO[j] - .001), pipeY(JO[j] + .001)) - hw - (M ? 13 : 18);
+          if (open > .02) {
+            k = emb > .01 ? 1 : 0;
+            ctx.globalAlpha = w * open; ctx.strokeStyle = '#ff5a2a'; ctx.fillStyle = '#ff5a2a'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(gx - gw - 4, gy + 7); ctx.lineTo(gx - gw - 4, gy); ctx.lineTo(gx + gw + 4, gy); ctx.lineTo(gx + gw + 4, gy + 7); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - (M ? 8 : 12)); ctx.stroke();
+            if (k) label('LÜCKE 0' + (j + 1), gx, gy - (M ? 17 : 23), 'center', 2);
+          }
+          ck = eo(seg(hj[j], .55, 1));
+          if (ck > .02) {
+            gy = L.y - hw - (M ? 16 : 22);
+            ctx.globalAlpha = w * ck; ctx.strokeStyle = '#0f9d5b'; ctx.fillStyle = '#0f9d5b'; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.arc(gx, gy, 9, 0, TAU); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(gx - 4, gy + .5); ctx.lineTo(gx - 1, gy + 3.5); ctx.lineTo(gx + 4.5, gy - 3); ctx.stroke();
+            ctx.globalAlpha = w * ck * (1 - ck) * 2.4; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(gx, gy, 9 + 22 * ck, 0, TAU); ctx.stroke();
+            ctx.lineCap = 'butt';
+            ctx.globalAlpha = w * ck * .85; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.moveTo(gx, L.y - hw - 1); ctx.lineTo(gx, L.y + hw + 1); ctx.stroke();
+          }
+        }
+        ctx.globalAlpha = .78 * w;
+        ctx.fillStyle = FG[worldAt(L.xa + 20, L.y - hw - 30)]; label('KLICK', L.xa, pipeY(.001) - hw - (M ? 18 : 26), 'left', 2);
+        ctx.fillStyle = FG[worldAt(L.xb - 20, L.y - hw - 30)]; label(al > .5 ? 'KUNDE' : 'KAUF', L.xb, pipeY(.999) - hw - (M ? 18 : 26), 'right', 2);
         ctx.globalAlpha = 1;
       }
     };
@@ -592,8 +594,8 @@
       for (i = cnt; i < N; i++) { q = GRID.rk[i]; GRID.ra[i] = (seenK[q] + .5) / cntK[q]; seenK[q]++; }
     },
     run: function (o, p, t) {
-      var scan = W * (-.12 + 1.24 * seg(p, 26.6, 31.4)), i, x, y, d, a, s, r, mj, k, rk, ra, ang, rr, ti;
-      var Wr = G.wire, cx = Wr.cx, cy = Wr.cy, R = Wr.h * (M ? .42 : .44), lock = eio(seg(p, 27.2, 30.2)), sc = lerp(1.5, 1, lock), rot = (1 - lock) * 1.1 + p * .05, RS = [0, 1, .66, .33];
+      var scan = W * (-.12 + 1.24 * seg(p, 28.7, 31.5)), i, x, y, d, a, s, r, mj, k, rk, ra, ang, rr, ti;
+      var Wr = G.wire, cx = Wr.cx, cy = Wr.cy, R = Wr.h * (M ? .42 : .44), lock = eio(seg(p, 28.9, 30.5)), sc = lerp(1.5, 1, lock), rot = (1 - lock) * 1.1 + p * .05, RS = [0, 1, .66, .33];
       for (i = 0; i < N; i++) {
         if (i < GRID.cnt) {
           x = GRID.x[i]; y = GRID.y[i]; mj = GRID.mj[i];
@@ -611,14 +613,14 @@
       }
     },
     decor: function (w, p) {
-      var Wr = G.wire, lock = eio(seg(p, 27.2, 30.2));
+      var Wr = G.wire, lock = eio(seg(p, 28.9, 30.5));
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = w * lock; ctx.fillStyle = '#0f9d5b';
       ctx.beginPath(); ctx.arc(Wr.cx, Wr.cy, 5, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
     }
   };
 
   /* 7 · Landingpage als Drahtmodell. Jeder der drei Saetze zeigt auf sein Bauteil. */
-  var TS3 = [31.8, 32.7, 33.6];
+  var TS3 = [32.15, 33.0, 33.85];
   FORM.wire = (function () {
     var px, py, pg, isW;
     function build() {
@@ -794,8 +796,28 @@
       return C;
     }
     function put(o, i, al, cr) { if (G.fun.vert) { o.x[i] = C.c + cr * C.cz; o.y[i] = al; } else { o.x[i] = al; o.y[i] = C.c + cr * C.cz; } }
+    /* Messuhr k sitzt zwischen Station k und k + 1 auf der Huelle. Dieselbe Rechnung dient dem Bild und der Schaltflaeche. */
+    function gaugeAt(k, front, g) {
+      var s = k + (G.fun.vert ? (k === 0 ? .6 : k === 3 ? .42 : .58) : .56), hull = (hwAt(s) * 1.16 + 8) * C.cz, rg = (G.fun.vert ? Math.min(11.5, H * .0145) : 12.5) * C.zs, st = (G.fun.vert ? 27 : 14) * C.zs;
+      g.r = rg; g.v = sstep(k + .3, k + .6, front);
+      if (G.fun.vert) { g.x = C.c + hull + st + rg; g.y = along(s); g.ax = C.c + hull; g.ay = g.y; g.ok = g.y - rg > HT + 8 && g.y + rg < H - HB - 8 && g.x + rg < W - 10; }
+      else { g.x = along(s); g.y = C.c - hull - st - rg; g.ax = g.x; g.ay = C.c - hull; g.ok = g.x - rg > IX + 4 && g.x + rg < W - 12 && g.y - rg > HT + 8; }
+      return g;
+    }
+    var GT = { x: 0, y: 0, r: 0, v: 0, ax: 0, ay: 0, ok: false };
     return {
       name: 'Strom',
+      gauge: function (k, p, g) { cam(p); return gaugeAt(k, keys(p, FR), g); },
+      /* feine Linie von der gezeigten Uhr zu ihrer Karte */
+      lead: function (w, p) {
+        var i = GZ.hot > -1 ? GZ.hot : GZ.pin, hk, px, py, dx, dy, d;
+        if (i < 0 || !GZ.cw) return; hk = GZ.k[i]; if (hk < .05) return;
+        cam(p); gaugeAt(i, keys(p, FR), GT);
+        px = clamp(GT.x, GZ.cx + 10, GZ.cx + GZ.cw - 10); py = clamp(GT.y, GZ.cy, GZ.cy + GZ.ch);
+        dx = px - GT.x; dy = py - GT.y; d = Math.sqrt(dx * dx + dy * dy); if (d < GT.r + 8) return;
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = w * hk * .8; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(GT.x + dx / d * (GT.r + 5), GT.y + dy / d * (GT.r + 5)); ctx.lineTo(px, py); ctx.stroke(); ctx.globalAlpha = 1;
+      },
       init: function () {
         fk = new Uint8Array(N); fd = new Float32Array(N); fo = new Float32Array(N); fb = new Uint8Array(N); bu = new Float32Array(N); bv = new Float32Array(N);
         var r = mulberry(303), nBar = Math.floor(N * .16), nLoop = Math.floor(N * .05), i, q;
@@ -815,7 +837,7 @@
       run: function (o, p, t) {
         var F_ = G.fun, vert = F_.vert, front = keys(p, FR);
         cam(p);
-        var rl = sstep(65.35, 66.85, p), boom = sstep(68.8, 69.6, p), ll = sstep(66.45, 67.15, p), flow = t * .05 + p * .014, dir = vert ? -1 : 1, zs = C.zs;
+        var rl = sstep(65.35, 66.85, p), boom = sstep(68.8, 69.6, p), ll = sstep(66.45, 67.15, p), flow = t * .05 + p * .014, dir = vert ? -1 : 1, zs = C.zs, MK = F_.mk, lk = sstep(66.75, 67.2, p) * (1 - sstep(68.55, 68.8, p));
         var i, kd, u, s, ds, off, al, cr, a, r, sz, sg, tau, wait, hw, j, v, h, q, L, d, kst, e1, env;
         var AL = [.5, .62, .8, 1], SZ = [1.5, 1.8, 2.1, 2.9];
         var lp = F_.loop, L1 = lp.l1, L2 = lp.l2, L3 = lp.l3; L = L1 + L2 + L3;
@@ -854,8 +876,13 @@
             j = fb[i]; v = fract(bv[i] + t * (.16 + .2 * R3[i]) + p * .05);
             a = (rl > .01 && R3[i] < .2 + .8 * rl) ? (.6 + .4 * R4[i]) * sstep(0, .05, v) * sstep(1, .95, v) * sstep(0, .25, rl) : 0; r = 1; sz = 1.6 + 1.6 * R3[i];
             if (rl <= .01) { put(o, i, along(4), 0); }
-            else if (vert) { o.x[i] = F_.mb.x[j] + bu[i] * F_.mb.w; o.y[i] = F_.mb.base - v * F_.mb.h[j] * rl * (1 + boom * 5); }
-            else { o.x[i] = F_.bx[j] + bu[i] * F_.bw; o.y[i] = F_.c - v * F_.bh[j] * rl * (1 + boom * 3); }
+            else {
+              // die Ueberlebenden fuellen die drei Balken der Marke (Masse wie im Signet)
+              q = BAR[j]; h = v * q[3] * rl;
+              o.x[i] = MK.ox + (q[0] + .6 + bu[i] * (q[2] - 1.2)) * MK.u; o.y[i] = MK.oy + (103 - h * (1 + boom * (vert ? 5 : 4))) * MK.u;
+              if (boom < .01 && h > q[3] - 4.5 && (bu[i] < .25 || bu[i] > .75)) { d = (bu[i] < .25 ? .25 - bu[i] : bu[i] - .75) * q[2]; e1 = h - (q[3] - 4.5); if (d * d + e1 * e1 > 20.25) a = 0; }
+              a *= 1 - .45 * lk;
+            }
           } else {
             q = fract(R1[i] + t * .06 + p * .02); d = q * L; r = 1; sz = 1.7;
             a = (q < ll ? .95 : 0) * sstep(0, .02, q) * sstep(1, .98, q);
@@ -930,18 +957,31 @@
         ctx.setLineDash([]);
         // Mittelachse
         ctx.globalAlpha = w * .12; ctx.beginPath(); e1 = pt(-1.2, 0); ctx.moveTo(e1[0], e1[1]); e1 = pt(4, 0); ctx.lineTo(e1[0], e1[1]); ctx.stroke();
-        // Messuhren auf der Leitung
-        if (!vert) for (k = 0; k < 4; k++) {
-          vis = sstep(k + .3, k + .6, front) * w; if (vis < .02) continue;
-          q = pt(k + .5, -(hwAt(k + .5) * 1.16 + 8)); rg = 11 * C.zs; y = q[1] - rg - 14 * C.zs;
-          if (q[0] < -40 || q[0] > W + 40 || y - rg < HT + 8) continue;
+        // Messuhren auf der Leitung: beim Zeigen leuchtet die Uhr gruen und der Zeiger schwingt, sonst pulsen sie reihum
+        var hot, idle = GZ.hot < 0 && GZ.pin < 0, pi_ = Math.floor(t / 1.3) % 4, pe = Math.pow(Math.sin(PI * fract(t / 1.3)), 2), hk, gg;
+        for (k = 0; k < 4; k++) {
+          gaugeAt(k, front, GT); vis = GT.v * w; if (vis < .02) continue;
+          x = GT.x; y = GT.y; rg = GT.r; hk = GZ.k[k];
+          if (x < -40 || x > W + 40 || y < -40 || y > H + 40 || (!vert && y - rg < HT + 8)) continue;
+          if (hk > .01 || (idle && pi_ === k && GT.ok)) {
+            hot = Math.max(hk, idle && pi_ === k ? pe * .55 : 0);
+            gg = ctx.createRadialGradient(x, y, rg * .4, x, y, rg * 3.2);
+            gg.addColorStop(0, 'rgba(61,214,140,' + (.34 * hot * vis) + ')'); gg.addColorStop(1, 'rgba(61,214,140,0)');
+            ctx.globalAlpha = 1; ctx.fillStyle = gg; ctx.fillRect(x - rg * 3.2, y - rg * 3.2, rg * 6.4, rg * 6.4);
+            ctx.globalAlpha = vis * hot * (hk > .01 ? .9 : .7 * (1 - fract(t / 1.3))); ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(x, y, rg + 5 + (hk > .01 ? 2 * Math.sin(t * 4) : 12 * fract(t / 1.3)), 0, TAU); ctx.stroke();
+          }
           ctx.globalAlpha = vis * .6; ctx.strokeStyle = 'rgb(244,245,242)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(q[0], y + rg); ctx.stroke();
-          ctx.beginPath(); ctx.arc(q[0], y, rg, 0, TAU); ctx.stroke();
-          for (j = 0; j < 7; j++) { ta = -2.6 + j * .34; ctx.beginPath(); ctx.moveTo(q[0] + Math.cos(ta) * rg * .72, y + Math.sin(ta) * rg * .72); ctx.lineTo(q[0] + Math.cos(ta) * rg * .92, y + Math.sin(ta) * rg * .92); ctx.stroke(); }
+          ctx.beginPath(); ctx.moveTo(GT.ax, GT.ay); if (vert) ctx.lineTo(x - rg, y); else ctx.lineTo(x, y + rg); ctx.stroke();
+          if (hk > .01) { ctx.globalAlpha = vis * (.6 + .4 * hk); ctx.strokeStyle = 'rgb(' + Math.round(lerp(244, 61, hk)) + ',' + Math.round(lerp(245, 214, hk)) + ',' + Math.round(lerp(242, 140, hk)) + ')'; ctx.lineWidth = 1 + hk; }
+          ctx.beginPath(); ctx.arc(x, y, rg, 0, TAU); ctx.stroke();
+          ctx.lineWidth = 1;
+          for (j = 0; j < 7; j++) { ta = -2.6 + j * .34; ctx.beginPath(); ctx.moveTo(x + Math.cos(ta) * rg * .72, y + Math.sin(ta) * rg * .72); ctx.lineTo(x + Math.cos(ta) * rg * .92, y + Math.sin(ta) * rg * .92); ctx.stroke(); }
           na = -2.4 + 1.7 * (.5 + .4 * Math.sin(t * 1.3 + k * 1.7)) * (1 - k * .16);
-          ctx.globalAlpha = vis; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1.6;
-          ctx.beginPath(); ctx.moveTo(q[0], y); ctx.lineTo(q[0] + Math.cos(na) * rg * .74, y + Math.sin(na) * rg * .74); ctx.stroke();
+          if (hk > .01) na = lerp(na, -1.57 + .85 * Math.sin(t * 6.5 + k), hk);
+          ctx.globalAlpha = vis; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1.6 + .6 * hk;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(na) * rg * .74, y + Math.sin(na) * rg * .74); ctx.stroke();
+          if (hk > .01) { ctx.globalAlpha = vis * hk; ctx.fillStyle = 'rgb(61,214,140)'; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, TAU); ctx.fill(); }
         }
         // Rueckweg: Kaeufe zurueck an Meta
         if (ll > .01) {
@@ -958,14 +998,45 @@
           else { ctx.moveTo(e1[0] - 6, e1[1] + 9); ctx.lineTo(e1[0], e1[1]); ctx.lineTo(e1[0] + 6, e1[1] + 9); }
           ctx.stroke();
         }
-        // Grundlinie der Rendite-Balken
-        var rl = sstep(65.35, 66.85, p);
-        if (rl > .01 && !vert) { ctx.globalAlpha = w * rl * .5; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(F_.bx[0] - 10, F_.c + .5); ctx.lineTo(F_.bx[2] + F_.bw + 10, F_.c + .5); ctx.stroke(); }
-        if (rl > .01 && vert) { ctx.globalAlpha = w * rl * .5; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(F_.mb.x[0] - 6, F_.mb.base + .5); ctx.lineTo(F_.mb.x[2] + F_.mb.w + 6, F_.mb.base + .5); ctx.stroke(); }
+        // das Signet am Ende: drei Balken in den Massen der Marke, erst als Riss, dann gefuellt
+        var rl = sstep(65.35, 66.85, p), MK = F_.mk, u = MK.u, lk = sstep(66.75, 67.2, p) * (1 - sstep(68.55, 68.8, p)), b_, bx_, by_, bh_;
+        if (rl > .01) {
+          ctx.globalCompositeOperation = 'source-over';
+          for (j = 0; j < 3; j++) {
+            b_ = BAR[j]; bx_ = MK.ox + b_[0] * u; bh_ = b_[3] * u; by_ = MK.oy + 103 * u - bh_;
+            ctx.beginPath(); rrect(bx_, by_, b_[2] * u, bh_, 4.5 * u);
+            ctx.globalAlpha = w * rl * (1 - lk) * .5 * (1 - sstep(68.7, 68.9, p)); ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
+          }
+          ctx.globalAlpha = w * rl * .5 * (1 - sstep(68.7, 68.9, p)); ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(MK.ox + 18 * u, MK.oy + 103 * u + 4.5); ctx.lineTo(MK.ox + 106 * u, MK.oy + 103 * u + 4.5); ctx.stroke();
+        }
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      },
+      top: function (w, p, t) {
+        // die Marke rastet ein: die Balken stehen satt in Gruen, der Mauszeiger steht davor, wie im Signet
+        var MK = G.fun.mk, u = MK.u, lk = sstep(66.75, 67.2, p) * (1 - sstep(68.55, 68.8, p)), ck = sstep(66.95, 67.35, p) * (1 - sstep(68.5, 68.75, p)), rk = seg(p, 67.2, 67.75), s0, tx, ty, j, b_;
+        w *= 1 - sstep(69.1, 69.4, p); if (w < .01) return;
+        if (ck < .01 && lk < .01) { this.lead(w, p); return; }
+        if (lk > .01) {
+          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = w * lk * .84; ctx.fillStyle = '#3DD68C';
+          for (j = 0; j < 3; j++) { b_ = BAR[j]; ctx.beginPath(); rrect(MK.ox + b_[0] * u, MK.oy + b_[1] * u, b_[2] * u, b_[3] * u, 4.5 * u); ctx.fill(); }
+          ctx.globalAlpha = 1;
+        }
+        this.lead(w, p);
+        if (ck < .01) return;
+        tx = MK.ox + 62.5 * u; ty = MK.oy + 22 * u; s0 = lerp(1.5, 1, eo(ck));
+        ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = w * ck;
+        ctx.translate(tx + (1 - eo(ck)) * 26 * u, ty + (1 - eo(ck)) * 30 * u); ctx.scale(u * s0, u * s0); ctx.translate(-62.5, -22);
+        ctx.beginPath(); for (var i = 0; i < ARROW.length; i++) { if (i) ctx.lineTo(ARROW[i][0], ARROW[i][1]); else ctx.moveTo(ARROW[i][0], ARROW[i][1]); } ctx.closePath();
+        ctx.lineJoin = 'round'; ctx.lineWidth = 3.6; ctx.strokeStyle = '#0a0b0d'; ctx.stroke(); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.restore();
+        if (rk > 0 && rk < 1) { ctx.globalAlpha = w * (1 - rk) * .8; ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tx, ty, 6 + rk * 46 * u, 0, TAU); ctx.stroke(); ctx.globalAlpha = w * (1 - rk) * .4; ctx.beginPath(); ctx.arc(tx, ty, 6 + rk * 30 * u, 0, TAU); ctx.stroke(); }
+        ctx.globalAlpha = 1;
       }
     };
   })();
+  /* Zustand der Messuhren: welche gezeigt wird (Maus, Fokus), welche angeheftet ist (Tipp), weiche Blende je Uhr */
+  var GZ = { hot: -1, pin: -1, pinP: 0, k: [0, 0, 0, 0], cx: 0, cy: 0, cw: 0, ch: 0 };
+  function rrect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); }
 
   /* 11 bis 16 · Fuenf Welten. Jedes Bild ist eine Zeichnung, die der Schwarm formt. */
   function Pic() { this.P = []; this.X = []; }
@@ -1053,7 +1124,7 @@
   });
 
   /* Welt 2 · Online-Coaches: die Sendung laeuft, der Saal fuellt sich */
-  FORM.w2 = picForm(1, 'Webinar', function (P) {
+  FORM.w2 = picForm(1, 'Sendung', function (P) {
     var i, j, n, rw, yy, f, arc;
     P.rect(.12, .04, .76, .44, 0, 0, 1.3);
     P.circ(.5, .26, .1, 2, 1, null, null, 1.6); P.shape([[.468, .205], [.468, .315], [.56, .26]], 2, 1, 120);
@@ -1262,12 +1333,11 @@
   /* ---------- Spielplan des Schwarms ---------- */
   var SCHED = [
     { n: 'lattice', a: 0, b: 1.0 },
-    { n: 'cursor', a: 2.8, b: 6.45, st: 'rand', sw: .18 },
-    { n: 'words', a: 8.1, b: 10.3, st: 'wipe', wi: 1 },
-    { n: 'towers', a: 11.3, b: 16.4, st: 'rand', sw: .25 },
+    { n: 'cursor', a: 2.8, b: 5.95, st: 'rand', sw: .18 },
+    { n: 'towers', a: 7.5, b: 16.4, st: 'wipe', wi: 1, wl: .5, sw: .2 },
     { n: 'embers', a: 17.6, b: 22.9, st: 'up', sw: .1 },
-    { n: 'leak', a: 24.0, b: 25.95, st: 'rand', sw: .12 },
-    { n: 'grid', a: 27.9, b: 30.8, st: 'wipe', wi: 2 },
+    { n: 'leak', a: 24.0, b: 28.55, st: 'rand', sw: .12 },
+    { n: 'grid', a: 29.7, b: 30.9, st: 'rand', sw: .1 },
     { n: 'wire', a: 32.2, b: 38.15, st: 'rand', sw: 0 },
     { n: 'bars', a: 40.1, b: 45.55, st: 'wipe', wi: 3, sw: .2 },
     { n: 'streaks', a: 47.4, b: 55.35, st: 'wipe', wi: 4 },
@@ -1449,6 +1519,9 @@
       }
     }
 
+    if (fa.top && wa > .01) fa.top(wa, p, t);
+    if (fbm && fbm.top && wb > .01) fbm.top(wb, p, t);
+
     // Raender der Wischer + Klick-Zeiger
     ctx.globalCompositeOperation = 'source-over';
     for (i = 0; i < AW.length; i++) {
@@ -1486,13 +1559,13 @@
     HT = (M ? 3.4 : 4.4) * REM; HB = (M ? 3 : 3.6) * REM; IX = M ? 0 : 6 * REM;
     dpr = Math.max(1, Math.min(win.devicePixelRatio || 1, 2, Math.sqrt(6.5e6 / (W * H))));
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    S2 = M ? .14 : .12;
     if (!keep || maxScroll < 2) maxScroll = Math.max(1, Math.round(((M ? LEN_M : LEN_D) - 1) * H));
     trackH = Math.round(H + (1 - pBase) * maxScroll);
     track.style.height = trackH + 'px';
     G.hero = { u: M ? H * .23 / 72 : H * .4 / 72 };
     G.cur = M ? { k: H * .33 / 58.5, tx: W * .5 - H * .33 / 58.5 * 17, ty: H * .1 } : { k: H * .7 / 58.5, tx: W * .63, ty: H * .13 };
-    G.wd = M ? [{ w: W * .84, x: W * .08, y: H * .37 }, { w: W * .6, x: W * .32, y: H * .53 }] : [{ w: W * .54, x: W * .1, y: H * .47 }, { w: W * .4, x: W * .54, y: H * .8 }];
-    G.leak = M ? { xa: W * .1, xb: W * .92, y: H * .44, hw: 11, rise: H * .34 } : { xa: W * .13, xb: W * .9, y: H * .7, hw: H * .03, rise: H * .62 };
+    G.leak = M ? { xa: W * .1, xb: W * .92, y: H * .4, hw: 11, fall: H * .24 } : { xa: W * .13, xb: W * .9, y: H * .585, hw: H * .03, fall: H * .33 };
     G.wire = M ? { cx: W * .5, cy: H * .285, h: H * .4 } : { cx: W * .755, cy: H * .5, h: H * .7 };
     G.wire.s = G.wire.h / 1.25; G.wire.x0 = G.wire.cx - G.wire.s / 2; G.wire.y0 = G.wire.cy - G.wire.h / 2;
     G.icon = M ? { cx: W * .5, cy: H * .33, S: H * .4 } : { cx: W * .775, cy: H * .62, S: H * .7 };
@@ -1500,16 +1573,21 @@
     G.hor = M ? H * .44 : H * .56;
     G.eye = M ? { x0: W * .1, x1: W * .9 } : { x0: Math.max(W * .095, 9 * REM), x1: W * .94 };
     G.pic = M ? { cx: W * .5, cy: H * .3, s: Math.min(W * .78, H * .36), seedS: W * .17 } : { cx: W * .72, cy: H * .45, s: H * .6, seedS: H * .14 };
-    G.seed = M ? function (j) { return [W * (.14 + .18 * j), H * (.5 - .075 * j)]; } : function (j) { return [W * (.55 + .092 * j), H * (.72 - .115 * j)]; };
+    G.seed = M ? function (j) { var s = W * .17, y0 = Math.min(H * .5, (G.seedTop || H) - s * .62 - 30), st = Math.min(H * .075, (y0 - HT - 14 - s * .5) / 4); return [W * (.14 + .18 * j), y0 - st * j]; } : function (j) { return [W * (.55 + .092 * j), H * (.72 - .115 * j)]; };
     var F_;
     if (M) {
-      F_ = G.fun = { vert: true, c: W * .3, a0: H * .2, a4: H * .74, hw: [W * .2, W * .14, W * .09, W * .05, W * .03], hin: W * .3, Dc: H * .56, fc: H * .46, cc: W * .3, ring: W * .24, czMax: 2.2, chute: W * .06 };
-      F_.mb = { x: [W * .66, W * .76, W * .86], w: W * .08, base: H * .9, h: [H * .13, H * .2, H * .3] };
+      var ltE = doc.getElementById('loop-t'), ltH = Math.max(86, ltE ? ltE.offsetHeight : 0);
+      F_ = G.fun = { vert: true, c: W * .3, a0: H * .2, a4: Math.min(H * .72, H - HB - 1.75 * REM - ltH - 3.1 * REM - 8), hw: [W * .2, W * .14, W * .09, W * .05, W * .03], hin: W * .3, Dc: H * .56, fc: H * .46, cc: W * .3, ring: W * .24, czMax: 2.2, chute: W * .06 };
+      // Signet unten rechts, unter dem Rueckweg, neben der Station Rendite
+      var mu = Math.min((W * .31) / 78, (H * .15) / 81), mxr = W - 1.1 * REM - 8;
+      F_.mk = { u: mu, ox: mxr - 103 * mu, oy: F_.a4 - H * .01 - 22 * mu };
       var cb = W - 26 - F_.c;
       F_.loop = { s1: 3.45, s0: -.55, c0: F_.hw[3] * 1.16 + 8, cb: cb, side: 1, l1: cb - (F_.hw[3] * 1.16 + 8), l2: 4.0 * (F_.a4 - F_.a0) / 4, l3: cb - F_.hin * .9 };
     } else {
-      F_ = G.fun = { vert: false, c: H * .545, a0: W * .15, a4: W * .78, hw: [H * .225, H * .148, H * .09, H * .044, H * .025], hin: H * .31, Dc: W * .62, fc: W * .6, cc: H * .585, ring: H * .3, czMax: 4.2, chute: H * .115 };
-      F_.bw = W * .028; F_.bx = [W * .845, W * .884, W * .923]; F_.bh = [H * .2, H * .3, H * .42];
+      F_ = G.fun = { vert: false, c: H * .545, a0: W * .15, a4: W * .742, hw: [H * .225, H * .148, H * .09, H * .044, H * .025], hin: H * .31, Dc: W * .62, fc: W * .6, cc: H * .585, ring: H * .3, czMax: 4.2, chute: H * .115 };
+      // Signet rechts neben der Station Rendite: so gross, wie der Platz bis zum Rand erlaubt
+      var ml = F_.a4 + Math.max(F_.hw[4] * 1.16 + 38, 5.4 * REM), mr = W - 1.75 * REM - 16, mu2 = clamp(Math.min((mr - ml) / 78, H * .3 / 81), 1.1, 4.2);
+      F_.mk = { u: mu2, ox: (ml + mr) / 2 - 64 * mu2, oy: F_.c + H * .045 - 103 * mu2 };
       var r3 = F_.hw[3] * 1.16 + 8 + 12, r0 = F_.hw[0] * 1.16 + 8 + 14, yb = H * .345;
       F_.loop = { s1: 3.14, s0: 0, c0: r3, cb: yb, side: 1, l1: yb - r3, l2: 3.14 * (F_.a4 - F_.a0) / 4, l3: yb - r0 };
     }
@@ -1527,6 +1605,8 @@
     G.three = $$('.three li').map(function (li) { var tl = $('.tl', li); return { x: offL(li) + li.offsetWidth + 10, y: offT(li) + li.offsetHeight / 2 }; });
     if (verbsEl) { verbsEl.style.width = ''; verbW = verbEls.map(function (v) { var rg = doc.createRange(); rg.selectNodeContents(v); return Math.ceil(rg.getBoundingClientRect().width) + 2; }); vbS = -1; }
     G.stnH = stn.map(function (e) { return e.offsetHeight || 78; });
+    var whEl = $('.who-head'); G.seedTop = whEl ? offT(whEl) : H;
+    brandW100 = 0; brandK = ' ';
     portalMeasure();
     kick();
   }
@@ -1536,11 +1616,21 @@
   function offL(el) { var x = 0; while (el && el !== film) { x += el.offsetLeft; el = el.offsetParent; } return x; }
   function offT(el) { var y = 0; while (el && el !== film) { y += el.offsetTop; el = el.offsetParent; } return y; }
 
-  /* Stationen und Rueckweg folgen der Kamera */
-  var stn = $$('.stn'), stnK = [], loopL = $('#loop-l'), loopK = '';
+  /* Stationen, Rueckweg, Messuhren und Wortmarke folgen der Kamera */
+  var stn = $$('.stn'), stnK = [], loopL = $('#loop-l'), loopK = '', loopT = $('#loop-t'), loopTK = '', brandW = $('#brand-w'), brandK = '', brandW100 = 0;
+  var gzB = $$('.gz'), gzT = $$('.gz-tip'), gzK = ['', '', '', ''], gzOn = false, gzG = [{}, {}, {}, {}], tipK = '', tipI = -1;
+  function hideEl(el) { if (el && el.style.visibility !== 'hidden') { el.style.visibility = 'hidden'; el.style.opacity = 0; } }
+  function funnelOff() {
+    var i;
+    if (gzOn) { gzOn = false; for (i = 0; i < gzB.length; i++) { gzB[i].style.visibility = 'hidden'; gzK[i] = ''; } }
+    if (GZ.pin > -1 || GZ.hot > -1) { GZ.pin = -1; GZ.hot = -1; }
+    tip(-1);
+    if (loopTK) { loopTK = ''; hideEl(loopT); }
+    if (brandK) { brandK = ''; hideEl(brandW); }
+  }
   function stations(p) {
-    if (p < 55.3 || p > 69.5) return;
-    var F_ = G.fun, C = FORM.funnel.cam(p), front = FORM.funnel.front(p), i, x, y, o, sc = lerp(M ? 1.12 : 1.4, 1, C.ov), tf, key, el, close, ring, fade = 1 - sstep(68.9, 69.1, p);
+    if (p < 55.3 || p > 69.5) { funnelOff(); return; }
+    var F_ = G.fun, C = FORM.funnel.cam(p), front = FORM.funnel.front(p), i, x, y, o, sc = lerp(M ? 1.12 : 1.4, 1, C.ov), tf, key, el, close, ring, fade = 1 - sstep(68.9, 69.1, p), g, sz;
     for (i = 0; i < 5; i++) {
       el = stn[i]; ring = FORM.funnel.ringAt(i) * C.cz;
       close = clamp(1.6 - Math.abs(C.sc - i) * 2.6, 0, 1) * sstep(58.2, 58.6, p);
@@ -1551,14 +1641,93 @@
       key = tf + o;
       if (stnK[i] !== key) { stnK[i] = key; el.style.transformOrigin = F_.vert ? '0 50%' : '50% 100%'; el.style.transform = tf; el.style.opacity = o; }
     }
+    var lp = F_.loop, Do = (F_.a4 - F_.a0) / 4, lo;
     if (loopL) {
-      var lp = F_.loop, lo = Math.round(sstep(66.65, 66.95, p) * fade * 100) / 100, Do = (F_.a4 - F_.a0) / 4;
+      lo = Math.round(sstep(66.65, 66.95, p) * fade * 100) / 100;
       if (F_.vert) tf = 'translate3d(' + (W - 22).toFixed(1) + 'px,' + (F_.a0 + lp.s0 * Do).toFixed(1) + 'px,0) translate(-100%,-50%)';
       else tf = 'translate3d(' + (F_.a0 + (lp.s0 + lp.s1) / 2 * Do).toFixed(1) + 'px,' + (F_.c + lp.cb).toFixed(1) + 'px,0) translate(-50%,-50%)';
       key = tf + lo;
       if (key !== loopK) { loopK = key; loopL.style.transform = tf; loopL.style.opacity = lo; }
     }
+    // der Satz zum Rueckweg erscheint, waehrend die Linie gezeichnet wird
+    if (loopT) {
+      lo = Math.round(sstep(66.6, 67.0, p) * (1 - sstep(68.75, 69.0, p)) * 100) / 100;
+      if (F_.vert) tf = 'translate3d(' + (2.1 * REM).toFixed(1) + 'px,' + (F_.a4 + 3.1 * REM + (1 - lo) * 14).toFixed(1) + 'px,0)';
+      else tf = 'translate3d(' + (F_.a0 + lp.s1 * Do + 1.9 * REM).toFixed(1) + 'px,' + (F_.c + lp.cb - (1 - lo) * -14).toFixed(1) + 'px,0) translate(0,-100%)';
+      key = tf + lo;
+      if (key !== loopTK) { loopTK = key; loopT.style.transform = tf; loopT.style.opacity = lo; loopT.style.visibility = lo > 0 ? 'visible' : 'hidden'; }
+    }
+    // die Wortmarke steht mittig unter dem Signet
+    if (brandW) {
+      var K = F_.mk, fs;
+      if (!brandW100) { brandW.style.fontSize = '100px'; brandW100 = brandW.offsetWidth || 630; }
+      fs = 78 * K.u * 100 / brandW100;
+      lo = Math.round(sstep(67.0, 67.4, p) * (1 - sstep(68.5, 68.75, p)) * 100) / 100;
+      tf = 'translate3d(' + (K.ox + 64 * K.u).toFixed(1) + 'px,' + (K.oy + 103 * K.u + 7.5 * K.u + (1 - lo) * 10).toFixed(1) + 'px,0) translate(-50%,0)';
+      key = tf + lo + '|' + fs.toFixed(1);
+      if (key !== brandK) { brandK = key; brandW.style.fontSize = fs.toFixed(1) + 'px'; brandW.style.transform = tf; brandW.style.opacity = lo; brandW.style.visibility = lo > 0 ? 'visible' : 'hidden'; }
+    }
+    // Schaltflaechen genau ueber den Messuhren
+    for (i = 0; i < gzB.length; i++) {
+      g = FORM.funnel.gauge(i, p, gzG[i]); el = gzB[i];
+      if (g.ok && g.v > .6 && fade > .6 && !locked) {
+        sz = Math.max(44, Math.round(g.r * 2 + 16));
+        key = g.x.toFixed(1) + ',' + g.y.toFixed(1) + ',' + sz;
+        if (gzK[i] !== key) { gzK[i] = key; el.style.width = sz + 'px'; el.style.height = sz + 'px'; el.style.margin = (-sz / 2) + 'px 0 0 ' + (-sz / 2) + 'px'; el.style.transform = 'translate3d(' + g.x.toFixed(1) + 'px,' + g.y.toFixed(1) + 'px,0)'; el.style.visibility = 'visible'; gzOn = true; }
+      } else if (gzK[i] !== '') { gzK[i] = ''; el.style.visibility = 'hidden'; if (GZ.hot === i) GZ.hot = -1; if (GZ.pin === i) GZ.pin = -1; if (doc.activeElement === el) { try { el.blur(); } catch (e) {} } }
+    }
+    if (GZ.pin > -1 && Math.abs(p - GZ.pinP) > .7) GZ.pin = -1;
+    i = GZ.hot > -1 ? GZ.hot : GZ.pin;
+    tip(i > -1 && gzK[i] !== '' ? i : -1);
   }
+  /* Hinweiskarte neben der Uhr: sie verdeckt nie einen Stationsnamen und bleibt im Bild */
+  function textRect(el) { var rg = doc.createRange(); rg.selectNodeContents(el); return rg.getBoundingClientRect(); }
+  function tip(i) {
+    var j, el, g, tw, th, R = [], x0, y0, x1, y1, key, r, q, x, y, best = null, bc = 1e9, c, nx, ny, d, hit, gm, m = 8, note = $('#fnote');
+    if (i !== tipI) { for (j = 0; j < gzT.length; j++) gzT[j].classList.toggle('on', j === i); for (j = 0; j < gzB.length; j++) gzB[j].setAttribute('aria-expanded', j === i ? 'true' : 'false'); tipI = i; tipK = ''; }
+    if (i < 0) return;
+    el = gzT[i]; g = gzG[i];
+    var F_ = G.fun, C = FORM.funnel.cam(pS * 100), mw = '';
+    // schmale Geraete: die Karte wird so schmal, dass sie links neben den Stationsnamen Platz findet
+    if (F_.vert) mw = Math.round(clamp(C.c + FORM.funnel.ringAt(Math.min(4, i + 1)) * C.cz + 14 - 8 - 12, 112, 168)) + 'px';
+    if (el.style.maxWidth !== mw) el.style.maxWidth = mw;
+    tw = el.offsetWidth; th = el.offsetHeight;
+    key = g.x.toFixed(0) + ',' + g.y.toFixed(0) + ',' + tw + ',' + th; if (key === tipK) return; tipK = key;
+    // was die Karte nie verdecken darf: Stationsnamen, Zaehler, Beschriftungen, Signet und die anderen Uhren
+    for (j = 0; j < stn.length; j++) { if (parseFloat(stn[j].style.opacity || 0) < .05) continue; $$('b, .sub, .cnt', stn[j]).forEach(function (e) { R.push(textRect(e)); }); }
+    [loopL, loopT, brandW, note].forEach(function (e) { if (e && e === note ? getComputedStyle(e).visibility === 'visible' : (e && parseFloat(e.style.opacity || 0) > .05)) R.push(e.getBoundingClientRect()); });
+    var K = G.fun.mk; if (brandK && brandW && parseFloat(brandW.style.opacity || 0) > .05) R.push({ left: K.ox + 22 * K.u, top: K.oy + 18 * K.u, right: K.ox + 106 * K.u, bottom: K.oy + 106 * K.u });
+    for (j = 0; j < gzG.length; j++) { q = gzG[j]; if (gzK[j] !== '') R.push({ left: q.x - q.r - (j === i ? 6 : 0), top: q.y - q.r - (j === i ? 6 : 0), right: q.x + q.r + (j === i ? 6 : 0), bottom: q.y + q.r + (j === i ? 6 : 0) }); }
+    // quer liegender Funnel: auch die Tore der Stationen bleiben frei
+    if (!F_.vert) for (j = 0; j < 5; j++) { q = C.x0 + j * C.D; r = FORM.funnel.ringAt(j) * C.cz; if (q > -60 && q < W + 60) R.push({ left: q - 10 * C.zs, top: C.c - r, right: q + 10 * C.zs, bottom: C.c + r }); }
+    x0 = (M ? 0 : IX) + 10; y0 = HT + 8; x1 = W - (M ? 12 : 1.75 * REM) - tw; y1 = H - HB - 8 - th;
+    gm = g.r + 10; if (F_.vert) m = 6;
+    // der naechste freie Platz zur Uhr gewinnt, bevorzugt ueber ihr; eine feine Linie verbindet Karte und Uhr
+    for (y = Math.max(y0, g.y - 330); y <= Math.min(y1, g.y + 330); y += 6) {
+      for (x = Math.max(x0, g.x - 340 - tw); x <= Math.min(x1, g.x + 340); x += 6) {
+        nx = clamp(g.x, x, x + tw) - g.x; ny = clamp(g.y, y, y + th) - g.y; d = Math.sqrt(nx * nx + ny * ny);
+        if (d < gm) continue;
+        c = d + (y + th / 2 > g.y ? (F_.vert ? 16 : 44) : 0) + Math.abs(x + tw / 2 - g.x) * .04 + (x + 24 < g.x && x + tw - 24 > g.x && y + th <= g.y ? -6 : 0);
+        if (c >= bc) continue;
+        hit = false;
+        for (j = 0; j < R.length; j++) { r = R[j]; if (x < r.right + m && x + tw > r.left - m && y < r.bottom + m - 2 && y + th > r.top - m + 2) { hit = true; break; } }
+        if (!hit) { bc = c; best = [x, y]; }
+      }
+    }
+    if (!best) best = [clamp(g.x - tw / 2, x0, Math.max(x0, x1)), clamp(g.y + gm, y0, Math.max(y0, y1))];
+    el.style.transform = 'translate3d(' + Math.round(best[0]) + 'px,' + Math.round(best[1]) + 'px,0)';
+    GZ.cx = Math.round(best[0]); GZ.cy = Math.round(best[1]); GZ.cw = tw; GZ.ch = th;
+  }
+  gzB.forEach(function (b, i) {
+    b.addEventListener('mouseenter', function () { if (!touch) GZ.hot = i; });
+    b.addEventListener('mouseleave', function () { if (GZ.hot === i && doc.activeElement !== b) GZ.hot = -1; });
+    b.addEventListener('focus', function () { var fv = true; try { fv = b.matches(':focus-visible'); } catch (e) {} if (fv) GZ.hot = i; });
+    b.addEventListener('blur', function () { if (GZ.hot === i) GZ.hot = -1; });
+    b.addEventListener('click', function (e) { e.stopPropagation(); if (GZ.pin === i) { GZ.pin = -1; if (touch) GZ.hot = -1; } else { GZ.pin = i; GZ.pinP = pS * 100; } });
+  });
+  doc.addEventListener('pointerdown', function (e) { if (GZ.pin > -1 && !(e.target && e.target.closest && e.target.closest('.gz'))) GZ.pin = -1; });
+  doc.addEventListener('keydown', function (e) { if (e.key === 'Escape' && (GZ.pin > -1 || GZ.hot > -1)) { GZ.pin = -1; GZ.hot = -1; } });
+  function gaugeEase(dt) { var i, to, kf = 1 - Math.exp(-dt * 12); for (i = 0; i < 4; i++) { to = (GZ.hot === i || GZ.pin === i) ? 1 : 0; GZ.k[i] += (to - GZ.k[i]) * (dt > 0 ? kf : 1); if (Math.abs(to - GZ.k[i]) < .004) GZ.k[i] = to; } }
 
   /* ---------- Text: Wortmasken, Buchstaben, Zeitachse ---------- */
   function split(el) {
@@ -1651,30 +1820,42 @@
     calm($('.l1 > span'), -1, .1, .4, .9, .85); calm($('.l2 > span'), -1, .1, .4, .9, .85);
 
     /* K1 */
-    beat('.b1a h2', { a: 2.5, din: .45, b: 6.1, dout: .45, o: 'l', calm: .95 });
-    mark('.giants', 7.4, 10.4); show('.giants', 7.4); ft('.giants', 10.38, 10.4, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
-    beat('.b1c p', { a: 11.3, din: .55, b: 13.4, dout: .45, o: 'up', calm: .94 });
-    beat('.b1d p', { a: 13.95, din: .55, b: 16.0, dout: .45, o: 'zoom', calm: .94 });
+    beat('.b1a h2', { a: 2.5, din: .45, b: 5.5, dout: .45, o: 'l', calm: .95 });
+    ft('.b1a', 2.5, 5.5, { y: H * .035 }, { y: -H * .035 }, 'none');
+    /* die Namen stehen am Fuss ihres Turms: sie fahren von links und rechts ein, waehrend die Tuerme wachsen */
+    mark('.giants', 7.3, 11.0); show('.giants', 7.3);
+    ft('.g1', 7.4, 8.2, { autoAlpha: 0, x: -W * .6 }, { autoAlpha: 1, x: 0 });
+    ft('.g2', 7.8, 8.6, { autoAlpha: 0, x: W * .6 }, { autoAlpha: 1, x: 0 });
+    ft('.g1', 8.2, 10.2, { x: 0, scale: 1 }, { x: -W * .012, scale: 1.05 }, 'none');
+    ft('.g2', 8.6, 10.2, { x: 0, scale: 1 }, { x: W * .012, scale: 1.04 }, 'none');
+    ft('.g1', 10.2, 10.9, { autoAlpha: 1, x: -W * .012, scale: 1.05 }, { autoAlpha: 0, x: -W * .25, scale: 1.22 }, 'power2.in');
+    ft('.g2', 10.2, 10.9, { autoAlpha: 1, x: W * .012, scale: 1.04 }, { autoAlpha: 0, x: W * .25, scale: 1.22 }, 'power2.in');
+    calm($('.g1'), 7.6, .8, 10.2, .7, .5); calm($('.g2'), 8.0, .8, 10.2, .7, .5);
+    beat('.b1c p', { a: 11.0, din: .55, b: 13.0, dout: .45, o: 'up', calm: .94 });
+    beat('.b1d p', { a: 13.5, din: .55, b: 16.15, dout: .45, o: 'zoom', calm: .94 });
 
     /* K2 */
-    beat('.b2a h2', { a: 17.2, din: .6, b: 20.7, dout: .45, i: 'zoom', o: 'up', calm: .6 });
+    beat('.b2a h2', { a: 17.2, din: .6, b: 20.6, dout: .45, i: 'zoom', o: 'up', calm: .6 });
     (CHARS.burn || []).forEach(function (c, i, all) { var a = 18.1 + i / all.length * 1.2; ft(c, a, a + .7, { '--b': -.2 }, { '--b': 1 }, 'power1.inOut'); });
-    beat('.b2b p', { a: 21.2, din: .5, b: 23.0, dout: .4, i: 'l', o: 'l', calm: .9 });
-    beat('.b2c p', { a: 23.7, din: .5, b: 25.6, dout: .35, o: 'fade', calm: .96 });
+    beat('.b2b p', { a: 21.1, din: .45, b: 23.1, dout: .4, i: 'l', o: 'l', calm: .9 });
+    beat('.b2c p', { a: 23.6, din: .5, b: 25.7, dout: .3, o: 'fade', calm: .96 });
 
     /* K3: die Buchstaben liegen verstreut und rasten ein */
     var snap = $('.b3a h2'), sc = CHARS.snap || [];
-    mark(snap, 26.2, 29.1); show(snap, 26.2);
+    mark(snap, 26.2, 29.2); show(snap, 26.2);
+    /* die Streuung haengt an der Schriftgroesse, nicht an der Zahl der Zeichen: jede Laenge rastet sauber ein */
+    var fz = snap ? parseFloat(getComputedStyle(snap).fontSize) || 60 : 60, nsc = Math.max(1, sc.length);
     sc.forEach(function (c, i) {
-      var a = 26.55 + i / sc.length * .7, rx = (rnd() - .5) * (M ? 90 : 300), ry = (rnd() - .5) * (M ? 120 : 260), ro = (rnd() - .5) * 220, s0 = .6 + rnd() * 1.1;
+      var a = 26.5 + i / nsc * .62, rx = (rnd() - .5) * fz * (M ? 2.6 : 4.2), ry = (rnd() - .5) * fz * (M ? 3.2 : 3.4), ro = (rnd() - .5) * 200, s0 = .6 + rnd() * .9;
       ft(c, 26.2, a, { x: rx * 1.25, y: ry * 1.25, rotation: ro * 1.3, scale: s0 }, { x: rx, y: ry, rotation: ro, scale: s0 }, 'none');
       ft(c, a, a + .34, { x: rx, y: ry, rotation: ro, scale: s0 }, { x: 0, y: 0, rotation: 0, scale: 1 }, 'back.out(1.5)');
     });
-    ft(snap, 28.6, 29.0, { autoAlpha: 1, x: 0 }, { autoAlpha: 0, x: -W * .32 }, 'power2.in');
-    calm(snap, 26.4, .8, 28.6, .4, .95);
-    beat('.b3b p', { a: 29.0, din: .45, b: 31.1, dout: .4, o: 'up', calm: .95 });
-    var three = $('.three'), lis = $$('.three li');
-    mark(three, 31.6, 35.7); show(three, 31.6);
+    ft(snap, 28.75, 29.15, { autoAlpha: 1, x: 0 }, { autoAlpha: 0, x: -W * .32 }, 'power2.in');
+    calm(snap, 26.4, .8, 28.75, .4, .95);
+    beat('.b3b p', { a: 29.2, din: .45, b: 31.0, dout: .35, o: 'up', calm: .95 });
+    var three = $('.three-w'), lis = $$('.three li');
+    mark(three, 31.4, 35.7); show(three, 31.4);
+    ft('.three-h', 31.45, 31.85, { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0 });
     lis.forEach(function (li, j) {
       var a = TS3[j] - .1;
       ft(li, a, a + .45, { autoAlpha: 0, x: -60 }, { autoAlpha: 1, x: 0 });
@@ -1703,7 +1884,7 @@
     mark('.tools', 46.4, 55.5); show('.tools', 46.4);
     ft('.mq', 46.5, 47.0, { autoAlpha: 0 }, { autoAlpha: 1 }, 'none');
     ft('.mq', 55.0, 55.35, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
-    [[46.7, 48.85], [49.25, 52.25], [52.55, 55.0]].forEach(function (r, j) {
+    [[46.7, 49.75], [50.1, 52.4], [52.75, 55.0]].forEach(function (r, j) {
       var t = $('.t' + (j + 1));
       ft(t, r[0], r[0] + .5, { autoAlpha: 0, x: W * .45 }, { autoAlpha: 1, x: 0 });
       ft($('h3', t), r[0], r[0] + .55, { x: W * .22 }, { x: 0 });
@@ -1714,13 +1895,21 @@
     calm($('.tools'), 46.6, .6, 55.0, .4, .9);
 
     /* K6: Stationen und Rueckweg folgen der Kamera (stations()) */
-    beat('.b6a h2', { a: 56.0, din: .5, b: 57.4, dout: .4, o: 'up', calm: .92 });
+    beat('.b6a h2', { a: 56.0, din: .4, b: 57.85, dout: .3, o: 'up', calm: .92 });
     mark('.stations', 55.9, 69.2); show('.stations', 55.9); ft('.stations', 69.1, 69.15, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
     ft('#fnote', 57.8, 58.2, { autoAlpha: 0 }, { autoAlpha: 1 }, 'none'); ft('#fnote', 68.9, 69.1, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
     ft('#loop-l', 66.55, 66.57, { autoAlpha: 0 }, { autoAlpha: 1 }, 'none'); ft('#loop-l', 69.1, 69.15, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
+    /* der Satz zum Rueckweg und die Wortmarke unter dem Signet: Ort und Deckkraft setzt stations() */
+    ft('#loop-t', 66.5, 66.52, { visibility: 'hidden' }, { visibility: 'inherit' }, 'none'); ft('#loop-t', 69.1, 69.12, { visibility: 'inherit' }, { visibility: 'hidden' }, 'none');
+    ft('#brand-w', 66.7, 66.72, { visibility: 'hidden' }, { visibility: 'inherit' }, 'none'); ft('#brand-w', 69.1, 69.12, { visibility: 'inherit' }, { visibility: 'hidden' }, 'none');
 
     /* K7 */
-    beat('.b7a h2', { a: 69.4, din: .4, b: 72.0, dout: .3, o: 'l', calm: .92 });
+    var wh = $('.who-head'), whw = $$('.b7a h2 .w > span');
+    mark(wh, 69.4, 72.4); show(wh, 69.4);
+    whw.forEach(function (w, i) { var g = whw.length > 1 ? .16 / (whw.length - 1) : 0; ft(w, 69.4 + i * g, 69.64 + i * g, { yPercent: 118 }, { yPercent: 0 }, 'power3.out'); });
+    ft('.who-note', 69.7, 70.1, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0 });
+    ft(wh, 72.1, 72.38, { autoAlpha: 1, x: 0 }, { autoAlpha: 0, x: -W * .32 }, 'power2.in');
+    calm(wh, 69.4, .4, 72.1, .3, .92);
     $$('.card').forEach(function (c, j) {
       var a = WA[j], inn = $('.card-in', c), dir = j % 2 ? -1 : 1, b = a + WL - (j === 4 ? .35 : .15);
       mark(c, a + .25, a + WL + .1);
@@ -1732,18 +1921,15 @@
     });
 
     /* K8: die Saetze stehen abwechselnd ueber und unter der Linie und loesen sich ueberlappend ab */
-    beat('.b8a h2', { a: 82.65, din: .35, b: 84.9, dout: .4, calm: 0 });
+    beat('.b8a h2', { a: 82.65, din: .35, b: 84.6, dout: .4, calm: 0 });
     calm($('.b8a h2'), 82.6, .2, 83.5, .5, .9);
-    var q3 = $('.q3'); mark(q3, 85.0, 88.05); show(q3, 85.0);
-    $$('.q3 span').forEach(function (s, j) { ft(s, 85.05 + j * .3, 85.45 + j * .3, { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0 }); });
-    ft(q3, 87.6, 88.0, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
-    beat('.b8c p', { a: 87.7, din: .45, b: 89.6, dout: .35, calm: 0 });
-    beat('.b8d p', { a: 89.65, din: .45, b: 91.55, dout: .35, calm: 0 });
-    var pre = $('.pre'); mark(pre, 91.6, 94.1); show(pre, 91.6);
-    ft('.pre-k', 91.6, 91.85, { autoAlpha: 0, x: -20 }, { autoAlpha: 1, x: 0 });
-    var pw = $$('.pre-t .w > span');
-    pw.forEach(function (w, j) { var g = pw.length > 1 ? .22 / (pw.length - 1) : 0; ft(w, 91.65 + j * g, 91.9 + j * g, { yPercent: 118 }, { yPercent: 0 }); });
-    ft(pre, 93.7, 94.0, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
+    /* drei Schlaege unter der Linie: jeder kommt fuer sich und bleibt stehen */
+    var q3 = $('.q3'); mark(q3, 84.7, 88.1); show(q3, 84.7);
+    $$('.q3 > span').forEach(function (s, j) { ft(s, 84.75 + j * .85, 85.15 + j * .85, { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0 }); });
+    ft(q3, 87.7, 88.05, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
+    beat('.b8c p', { a: 87.8, din: .45, b: 89.7, dout: .35, calm: 0 });
+    beat('.b8d p', { a: 89.75, din: .45, b: 91.6, dout: .35, calm: 0 });
+    beat('.b8e p', { a: 91.65, din: .45, b: 93.7, dout: .3, calm: 0 });
 
     /* K9 */
     var ct = $('.contact'); mark(ct, 94.7, 100); show(ct, 94.7);
@@ -1779,20 +1965,16 @@
   }
 
   /* ---------- HUD ---------- */
-  var roP = $('#ro-p'), roK = $('#ro-k'), roK2 = $('#ro-k2'), roC = $('#ro-c'), roN = $('#ro-n'), roF = $('#ro-f'), roXY = $('#ro-xy');
+  var roC = $('#ro-c'), roN = $('#ro-n'), roXY = $('#ro-xy');
   var railFill = $('#rail-fill'), railDot = $('#rail-dot'), idxA = $$('.index a');
-  var hudS = { pc: -1, kl: -1, ch: -1, fn: '', foot: null, end: null, leg: null };
+  var hudS = { ch: -1, foot: null, end: null, leg: null };
   (function () { var tk = $('#ticks'), i, s; if (!tk) return; for (i = 0; i < CH.length; i++) { s = doc.createElement('span'); s.style.top = CH[i] + '%'; tk.appendChild(s); } })();
   function pad(n, l) { var s = String(n); while (s.length < l) s = '0' + s; return s; }
   function dots(n) { var s = String(n), o = '', i; for (i = 0; i < s.length; i++) { if (i && (s.length - i) % 3 === 0) o += '.'; o += s.charAt(i); } return o; }
   function hud(p) {
-    var pc = Math.round(p), kl = Math.floor(p * 1284.4) + clicks, ch = 0, i, fn, e;
-    if (pc !== hudS.pc) { hudS.pc = pc; roP.textContent = pad(pc, 3); }
-    if (kl !== hudS.kl) { hudS.kl = kl; roK.textContent = dots(kl); if (roK2) roK2.textContent = dots(kl); }
+    var ch = 0, i, e;
     for (i = 0; i < CH.length; i++) if (p >= CH[i] - .001) ch = i;
     if (ch !== hudS.ch) { hudS.ch = ch; roC.textContent = pad(ch, 2); roN.textContent = CHN[ch]; idxA.forEach(function (a, j) { if (j === ch) { a.classList.add('on'); a.setAttribute('aria-current', 'true'); } else { a.classList.remove('on'); a.removeAttribute('aria-current'); } }); }
-    fn = FORM[(cur.fb && cur.m > .5 ? cur.fb : cur.fa).n].name;
-    if (fn !== hudS.fn) { hudS.fn = fn; roF.textContent = fn; }
     railFill.style.transform = 'scaleY(' + (p / 100).toFixed(4) + ')';
     railDot.style.transform = 'translateY(' + (p / 100 * G.railH).toFixed(1) + 'px)';
     e = p > 96.6;
@@ -1827,6 +2009,7 @@
     portalDom(p);
     worlds(p, t);
     activeZones(p);
+    gaugeEase(dt);
     for (i = ripples.length - 1; i >= 0; i--) { r = ripples[i]; r.age = t - r.t; if (r.age > 1.7) { ripples.splice(i, 1); continue; } r.r = r.age * 900 * r.p; r.f = 1 - r.age / 1.7; }
     if (snap) {
       evaluate(p, t - 1 / 60);
@@ -1845,7 +2028,7 @@
     var dt = Math.min((now - last) / 1000, .05); if (dt <= 0) dt = .016; last = now; T += dt;
     if (lenis) lenis.raf(now);
     var y = win.pageYOffset || root.scrollTop || 0;
-    pT = locked ? 0 : clamp(pBase + y / maxScroll, 0, 1);
+    pT = locked ? 0 : filmAt(y);
     var kf = 1 - Math.exp(-dt * (touch ? 9 : 15));
     pS += (pT - pS) * kf; if (Math.abs(pT - pS) < .00002) pS = pT;
     vel = lerp(vel, (pS - pPrev) / dt * 10, .15); pPrev = pS;
@@ -1859,7 +2042,7 @@
     if (now - lastFrameAt < 450) return;
     var y = win.pageYOffset || root.scrollTop || 0;
     T += directAt ? Math.min((now - directAt) / 1000, .5) : .05; directAt = now;
-    pT = pS = pPrev = locked ? 0 : clamp(pBase + y / maxScroll, 0, 1); vel = 0;
+    pT = pS = pPrev = locked ? 0 : filmAt(y); vel = 0;
     try { render(pS * 100, T, 0, true); } catch (e) { if (win.console) console.error(e); }
   }
   setInterval(direct, 400);
@@ -1869,33 +2052,55 @@
   doc.addEventListener('visibilitychange', function () { if (doc.hidden) stop(); else start(); });
 
   /* ---------- Sperre, Zuendung ---------- */
-  var outside = $$('.scene:not(#k0), .index, .kontakt-link');
-  function blockTouch(e) { if (!locked) return; if (e.cancelable) e.preventDefault(); nudge(); }
+  var outside = $$('.scene:not(#k0), .index, .kontakt-link, .wa');
+  var dlgOpen = false;
+  function blockTouch(e) { if (!locked || dlgOpen) return; if (e.cancelable) e.preventDefault(); nudge(); }
   var nudgeT = 0;
   function nudge() {
-    if (!locked) return; var now = Date.now(); if (now - nudgeT < 600) return; nudgeT = now;
+    if (!locked || dlgOpen) return; var now = Date.now(); if (now - nudgeT < 600) return; nudgeT = now;
     gate.classList.remove('shake'); void gate.offsetWidth; gate.classList.add('shake');
     if (hint) hint.classList.add('show');
     ripples.push({ x: G.gx, y: G.gy, t: T, p: .7, r: 0, f: 1, age: 0 });
   }
+  /* Der Flug nach der Zuendung. Er sperrt nichts: Rad, Finger und Tasten uebernehmen sofort. */
+  var FLY_WAIT = 260, FLY_MS = 2200, fly = null;
+  function eq(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function flyEnd(halt) {
+    if (!fly) return;
+    var f = fly; fly = null; clearTimeout(f.tm); clearTimeout(f.net); f.dead = true;
+    if (halt && f.run && lenis) { try { lenis.reset(); } catch (e) {} }
+  }
+  function onVirtual(d) {
+    // Rad nach unten waehrend des Flugs: der Film nimmt das Ziel des Flugs mit und laeuft von dort weiter
+    if (!fly) return true;
+    var e = d.event, dy = d.deltaY, f = fly;
+    if (e && e.type && e.type.indexOf('wheel') > -1 && dy > 0 && lenis && lenis.targetScroll < f.y) {
+      flyEnd(false);
+      try { if (e.cancelable) e.preventDefault(); lenis.scrollTo(f.y + dy, { programmatic: false, lerp: .1, force: true }); return false; } catch (er) {}
+      return true;
+    }
+    if (dy) flyEnd(false);
+    return true;
+  }
   function startLenis() {
     if (lenis || DEBUG || !win.Lenis) return;
-    try { lenis = new win.Lenis({ lerp: .085, smoothWheel: true, wheelMultiplier: 1 }); } catch (e) { lenis = null; }
+    try { lenis = new win.Lenis({ lerp: .1, smoothWheel: true, wheelMultiplier: 1.4, virtualScroll: onVirtual }); } catch (e) { lenis = null; }
   }
-  function jump(pu, immediate, ms) {
-    var y = Math.max(0, Math.round((clamp(pu, 0, 100) / 100 - pBase) * maxScroll));
+  function jump(pu, immediate, ms, free) {
+    var y = scrollFor(clamp(pu, 0, 100) / 100);
     if (immediate) {
       if (lenis) { try { lenis.scrollTo(y, { immediate: true, force: true }); } catch (e) {} }
       root.style.scrollBehavior = 'auto'; win.scrollTo(0, y); root.style.scrollBehavior = '';
-      pT = pS = pPrev = clamp(pBase + y / maxScroll, 0, 1); vel = 0;
+      pT = pS = pPrev = filmAt(y); vel = 0;
       render(pS * 100, T, 0, true);
       return;
     }
     ms = ms || 1800;
-    if (lenis) { try { lenis.scrollTo(y, { duration: ms / 1000, easing: eio, force: true, lock: true }); return; } catch (e) {} }
-    var y0 = win.pageYOffset, t0 = performance.now(), done = false;
-    function fin() { if (done) return; done = true; win.scrollTo(0, y); }
-    (function step(now) { if (done) return; var k = clamp((now - t0) / ms, 0, 1); win.scrollTo(0, y0 + (y - y0) * eio(k)); if (k < 1) requestAnimationFrame(step); else fin(); })(t0);
+    var ez = free ? eq : eio;
+    if (lenis) { try { lenis.scrollTo(y, { duration: ms / 1000, easing: ez, force: true, lock: !free, onComplete: function () { if (free) flyEnd(false); } }); return; } catch (e) {} }
+    var y0 = win.pageYOffset, t0 = performance.now(), done = false, me = free ? fly : null;
+    function fin() { if (done) return; done = true; if (me && me.dead) return; win.scrollTo(0, y); if (me) flyEnd(false); }
+    (function step(now) { if (done) return; if (me && me.dead) { done = true; return; } var k = clamp((now - t0) / ms, 0, 1); win.scrollTo(0, y0 + (y - y0) * ez(k)); if (k < 1) requestAnimationFrame(step); else fin(); })(t0);
     setTimeout(fin, ms + 400);
   }
   function impulse(x, y, power) {
@@ -1916,16 +2121,16 @@
     if (!locked) return;
     if (typeof x !== 'number' || (!x && !y)) { x = G.gx; y = G.gy; }
     open(false);
-    clicks++;
     ign = { x: x, y: y, t: T, R: maxR(x, y) };
     ripples.push({ x: x, y: y, t: T + .25, p: 1.5, r: 0, f: 1, age: 0 });
     impulse(x, y, 900);
     flash.style.setProperty('--fx', Math.round(x) + 'px'); flash.style.setProperty('--fy', Math.round(y) + 'px');
     flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
-    // zweiter Schlag: die Kamera fliegt durch den Schlusspunkt in den Film
-    setTimeout(function () { jump(CHJ[1], false, 3600); }, 800);
+    // zweiter Schlag: die Kamera fliegt durch den Schlusspunkt in den Film. Jede Eingabe uebernimmt.
+    var f = fly = { y: scrollFor(CHJ[1] / 100), run: false, dead: false, tm: 0, net: 0 };
+    f.tm = setTimeout(function () { if (fly !== f) return; f.run = true; jump(CHJ[1], false, FLY_MS, true); }, FLY_WAIT);
     // Sicherheitsnetz: falls der Frame-Timer nicht laeuft, steht der Film trotzdem am ersten Bild
-    setTimeout(function () { if ((win.pageYOffset || 0) < 4 && !locked) jump(CHJ[1], true); }, 5200);
+    f.net = setTimeout(function () { if (fly !== f) return; flyEnd(false); if ((win.pageYOffset || 0) < 4 && !locked) jump(CHJ[1], true); }, FLY_WAIT + FLY_MS + 900);
   }
   function lock() {
     locked = true; body.classList.add('locked');
@@ -1934,10 +2139,22 @@
     win.addEventListener('touchmove', blockTouch, { passive: false });
   }
 
-  $('#k0').addEventListener('click', function (e) { if (locked) ignite(e.clientX, e.clientY); });
+  /* Gesperrt: ein Klick oder Tipp irgendwo auf der Seite zuendet den Film am Klickpunkt. Links bleiben Links. */
+  function isLink(el) { return !!(el && el.closest && el.closest('a[href], dialog')); }
+  doc.addEventListener('click', function (e) {
+    if (!locked || dlgOpen || e.defaultPrevented || isLink(e.target)) return;
+    if (e.button) return;
+    ignite(e.clientX, e.clientY);
+  });
   gate.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ignite(); } });
   win.addEventListener('wheel', function () { nudge(); }, { passive: true });
-  win.addEventListener('keydown', function (e) { if (!locked) return; if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'End', 'Home', ' ', 'Spacebar'].indexOf(e.key) > -1 && doc.activeElement !== gate) { e.preventDefault(); nudge(); } });
+  var SCROLLKEYS = ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'End', 'Home', ' ', 'Spacebar'];
+  win.addEventListener('keydown', function (e) {
+    if (dlgOpen) return;
+    if (!locked) { if (fly && !e.defaultPrevented && SCROLLKEYS.indexOf(e.key) > -1) flyEnd(true); return; }
+    if (SCROLLKEYS.indexOf(e.key) > -1 && doc.activeElement !== gate) { e.preventDefault(); nudge(); }
+  });
+  win.addEventListener('touchstart', function () { if (fly && !locked) flyEnd(true); }, { passive: true });
   win.addEventListener('scroll', function () { if (locked && (win.pageYOffset || 0) !== 0) win.scrollTo(0, 0); }, { passive: true });
   doc.addEventListener('mousemove', function (e) {
     mouse.x = e.clientX; mouse.y = e.clientY; mouse.nx = e.clientX / W - .5; mouse.ny = e.clientY / H - .5;
@@ -1945,7 +2162,49 @@
     if (locked && !M) { var dx = e.clientX - G.gx, dy = e.clientY - G.gy, d = Math.sqrt(dx * dx + dy * dy), k = clamp((190 - d) / 80, 0, 1); gate.style.translate = (dx * .25 * k).toFixed(1) + 'px ' + (dy * .25 * k).toFixed(1) + 'px'; }
   });
   doc.addEventListener('mouseleave', function () { mouse.x = -9999; mouse.y = -9999; mouse.nx = 0; mouse.ny = 0; });
-  doc.addEventListener('pointerdown', function (e) { if (locked) return; clicks++; ripples.push({ x: e.clientX, y: e.clientY, t: T, p: 1, r: 0, f: 1, age: 0 }); if (ripples.length > 4) ripples.shift(); });
+  doc.addEventListener('pointerdown', function (e) { if (locked || dlgOpen || (e.target && e.target.closest && e.target.closest('dialog'))) return; ripples.push({ x: e.clientX, y: e.clientY, t: T, p: 1, r: 0, f: 1, age: 0 }); if (ripples.length > 4) ripples.shift(); });
+
+  /* ---------- Impressum und Datenschutz: Fenster im Film ---------- */
+  var dlgs = { impressum: $('#dlg-impressum'), datenschutz: $('#dlg-datenschutz') }, dlgCur = null, dlgFrom = null;
+  function dlgName(a) { var m = /(?:^|\/)(impressum|datenschutz)\.html(?:$|[?#])/.exec(a.getAttribute('href') || ''); return m ? m[1] : null; }
+  function dlgHash() { var m = /^#(impressum|datenschutz)$/.exec(location.hash || ''); return m ? m[1] : null; }
+  function dlgShow(name, from) {
+    var d = dlgs[name], inn; if (!d || typeof d.showModal !== 'function') return false;
+    if (dlgCur === d && d.open) return true;
+    if (from && !(from.closest && from.closest('dialog'))) dlgFrom = from;
+    if (dlgCur && dlgCur.open) { try { dlgCur.close(); } catch (e) {} }
+    try { d.showModal(); } catch (e2) { return false; }
+    dlgCur = d; dlgOpen = true; body.classList.add('dlg-on');
+    inn = $('.dlg-in', d); if (inn) inn.scrollTop = 0;
+    flyEnd(true);
+    if (lenis) { try { lenis.stop(); } catch (e3) {} }
+    GZ.pin = -1; GZ.hot = -1;
+    return true;
+  }
+  function dlgDone() {
+    // beim Wechsel von einem Fenster ins andere bleibt der Film angehalten
+    if ((dlgs.impressum && dlgs.impressum.open) || (dlgs.datenschutz && dlgs.datenschutz.open)) return;
+    dlgOpen = false; dlgCur = null; body.classList.remove('dlg-on');
+    if (lenis) { try { lenis.start(); } catch (e) {} }
+    var f = dlgFrom; dlgFrom = null;
+    if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e2) {} }
+  }
+  Object.keys(dlgs).forEach(function (k) {
+    var d = dlgs[k]; if (!d) return;
+    d.addEventListener('close', dlgDone);
+    d.addEventListener('click', function (e) { if (e.target === d) d.close(); });
+    $$('[data-close]', d).forEach(function (b) { b.addEventListener('click', function () { d.close(); }); });
+    // nichts vom Rad oder vom Finger erreicht den Film: nur der Text im Fenster rollt
+    function hold(e) { if (!(e.target && e.target.closest && e.target.closest('.dlg-in')) && e.cancelable) e.preventDefault(); }
+    d.addEventListener('wheel', hold, { passive: false });
+    d.addEventListener('touchmove', hold, { passive: false });
+  });
+  doc.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null, n;
+    if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    n = dlgName(a); if (!n) return;
+    if (dlgShow(n, a)) e.preventDefault();
+  });
 
   function hashTarget() { var h = location.hash.slice(1), m; if (!h) return null; if (h === 'kontakt') return 99.6; m = /^k(\d)$/.exec(h); return m ? CHJ[+m[1]] : null; }
   idxA.concat($$('.top a')).forEach(function (a) {
@@ -1956,7 +2215,7 @@
       var s = doc.getElementById('k' + m[1]); if (s) setTimeout(function () { try { s.focus({ preventScroll: true }); } catch (er) {} }, 2000);
     });
   });
-  win.addEventListener('hashchange', function () { var t = hashTarget(); if (t === null) return; if (locked) open(false); jump(t, true); });
+  win.addEventListener('hashchange', function () { var n = dlgHash(), t; if (n) { dlgShow(n, $('#foot a[href^="' + n + '"]')); return; } t = hashTarget(); if (t === null) return; if (locked) open(false); jump(t, true); });
 
   /* ---------- Start ---------- */
   function initForms() { FORM.towers.init(); Object.keys(FORM).forEach(function (k) { FORM[k].init(); }); }
@@ -1975,8 +2234,8 @@
     var n = M ? 2500 : 9000; if (n !== N) { N = n; initParticles(); }
     buildTimeline(); measure();
     initForms();
-    stnK = []; loopK = ''; ioK = ['', ''];
-    if (!locked && !keep) { root.style.scrollBehavior = 'auto'; win.scrollTo(0, Math.max(0, Math.round((p - pBase) * maxScroll))); root.style.scrollBehavior = ''; }
+    stnK = []; loopK = ''; loopTK = ' '; brandK = ' '; brandW100 = 0; gzK = ['', '', '', '']; tipK = ''; ioK = ['', ''];
+    if (!locked && !keep) { root.style.scrollBehavior = 'auto'; win.scrollTo(0, scrollFor(p)); root.style.scrollBehavior = ''; }
     if (lenis && lenis.resize) lenis.resize();
     render(pS * 100, T, 0, true);
   }
@@ -2001,6 +2260,7 @@
     if (DEBUG) { body.classList.add('still', 'settled'); open(true); hudK = 1; jump(DEBUG_P * 100, true); }
     else if (ht !== null) { open(false); jump(ht, true); }
     else { lock(); render(0, T, 0, true); }
+    if (dlgHash()) dlgShow(dlgHash(), $('#foot a[href^="' + dlgHash() + '"]'));
   } catch (e) {
     // der Film kann nicht starten: die gestapelte, lesbare Seite uebernimmt
     showError(e);
@@ -2011,7 +2271,7 @@
   }
 
   function arm() { body.classList.add('ready'); }
-  function refit() { try { measure(); FORM.lattice.init(); FORM.words.init(); render(pS * 100, T, 0, true); } catch (e) { showError(e); } }
+  function refit() { try { measure(); FORM.lattice.init(); render(pS * 100, T, 0, true); } catch (e) { showError(e); } }
   if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(function () { arm(); refit(); }, arm);
   setTimeout(arm, 700);
   // nach dem Auftakt steht alles fest, unabhaengig davon, ob Uebergaenge gelaufen sind
