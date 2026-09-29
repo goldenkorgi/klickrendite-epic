@@ -113,13 +113,15 @@ html.js .gate{display:grid}
 .gz-k{color:var(--acc)}
 .gz-s{color:var(--mute);font-size:.95rem;line-height:1.45}
 .brand-w{display:none}
-.note{display:none;margin-top:.75rem;color:var(--mute)}
+.s6 .note{display:none;margin-top:.75rem;color:var(--mute)}
 .who-note{margin-top:1.25rem;color:var(--mute);max-width:52ch}
 .who{max-width:1200px;margin:2.5rem auto 0}
 .card{background:var(--bg);color:var(--fg);padding:clamp(1.75rem,5vh,3.25rem) clamp(1.25rem,3vw,3rem)}
 .card .idx{display:block;color:var(--acc);margin-bottom:.9rem}
 .card h3{font-weight:800;font-size:clamp(1.7rem,4.6vw,4.4rem);letter-spacing:-.04em;line-height:1}
 .card p{margin-top:.9rem;color:var(--mute)}
+.card .offer{margin-top:1.1rem;max-width:34rem;color:var(--fg);font-weight:600;font-size:clamp(1.05rem,1.3vw,1.25rem);line-height:1.45;text-wrap:pretty}
+.card .note{margin-top:.75rem;font-size:.66rem;line-height:1.5;text-wrap:pretty}
 .q3 span{display:block}
 .eyebrow{color:var(--mute);display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem}
 .eyebrow::before{content:"";width:1.5rem;height:1px;background:var(--acc)}
@@ -149,7 +151,7 @@ html.film body{overflow-x:hidden}
 html.film body.locked{overflow:hidden;height:100vh;height:100svh;touch-action:none;overscroll-behavior:none;cursor:pointer}
 html.film body.locked a{cursor:pointer}
 html.film #swarm{display:block;position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;background:var(--k)}
-html.film .track{display:block;width:1px;height:3680vh;pointer-events:none;visibility:hidden}
+html.film .track{display:block;width:1px;height:3918vh;pointer-events:none;visibility:hidden}
 html.film .film{position:fixed;inset:0;z-index:2;overflow:hidden;pointer-events:none}
 html.film .scene{position:absolute;inset:0;padding:0;background:none;visibility:hidden;overflow:hidden;display:block;min-height:0}
 html.film .scene.on{visibility:visible}
@@ -337,7 +339,7 @@ html.film .stn::before{display:none}
 html.film .stn .cnt{display:block;color:var(--acc);font-size:.74rem;margin-bottom:.35rem;font-variant-numeric:tabular-nums}
 html.film .stn b{display:block;font-size:clamp(1.2rem,1.9vw,1.9rem)}
 html.film .stn .sub{display:block;margin-top:.3rem;font-size:.64rem}
-html.film .loop-l,html.film .note{position:absolute;margin:0;white-space:nowrap;visibility:hidden}
+html.film .loop-l,html.film .s6 .note{position:absolute;margin:0;white-space:nowrap;visibility:hidden}
 html.film .loop-t{position:absolute;left:0;top:0;margin:0;width:min(27rem,30vw);font-size:clamp(.9rem,1.08vw,1.12rem);line-height:1.5;color:#c3cbc6;visibility:hidden;opacity:0;padding-left:1rem;border-left:1px solid rgba(61,214,140,.55)}
 html.film .brand-w{display:block;position:absolute;left:0;top:0;margin:0;font-weight:800;letter-spacing:-.035em;line-height:1;white-space:nowrap;visibility:hidden;opacity:0;color:#f4f5f2;will-change:transform,opacity}
 html.film .brand-w .br{color:#3DD68C}
@@ -352,7 +354,7 @@ html.film .gz-k{display:flex;align-items:center;gap:.5rem;color:#3DD68C;font-siz
 html.film .gz-k::before{content:"";width:5px;height:5px;border-radius:50%;background:#3DD68C}
 html.film .gz-s{display:block;margin-top:.4rem;color:#f4f5f2;font-size:.9rem;line-height:1.4;font-weight:400}
 html.film .loop-l{left:0;top:0;font-size:.66rem;opacity:0;padding:.2rem .6rem;background:#0a0b0d}
-html.film .note{display:block;left:50%;right:auto;top:1.75rem;bottom:auto;translate:-50% 0;font-size:.66rem}
+html.film .s6 .note{display:block;left:50%;right:auto;top:1.75rem;bottom:auto;translate:-50% 0;font-size:.66rem}
 
 /* Kapitel 7 */
 html.film .who-head{width:min(46vw,44rem)}
@@ -363,8 +365,16 @@ html.film .card{position:absolute;inset:0;padding:0;background:none;visibility:h
 html.film .card-in{position:absolute;left:var(--gut);bottom:calc(5.4rem + 4vh);width:min(45vw,43rem);will-change:transform}
 html.film .card .idx{font-size:.8rem;margin-bottom:1.3rem;display:flex;align-items:center;gap:.8rem}
 html.film .card .idx::after{content:"";width:3rem;height:1px;background:currentColor;opacity:.5}
-html.film .card h3{font-size:clamp(2.4rem,5.6vw,6.2rem);line-height:.94;letter-spacing:-.045em;text-wrap:balance;hyphens:manual}
-html.film .card p{margin-top:1.5rem;font-size:.78rem;color:var(--mute)}
+html.film .card h3{font-size:clamp(2.4rem,min(5.6vw,10vh),6.2rem);line-height:.94;letter-spacing:-.045em;text-wrap:balance;hyphens:manual}
+html.film .card p{margin-top:1.5rem;max-width:34rem;font-size:.78rem;color:var(--mute)}
+/* Karte 04 bricht immer an der Trennstelle, Karte 08 am Desktop: bei jeder Fensterbreite dasselbe Bild, kein Titel passt nur um Haaresbreite */
+html.film .c4 h3{max-width:8.4em}
+html.film .c8 h3{max-width:7.4em}
+/* Angebot je Zielgruppe: ruhiger Lesetext in der Hausschrift, so gross wie der Text unter der Ueberschrift; darunter der Hinweis als kleinste Zeile.
+   Keine einzelnen Woerter in der letzten Zeile (pretty). */
+html.film .card .offer{margin-top:1.2rem;font-size:clamp(.95rem,1.15vw,1.2rem);line-height:1.45;font-weight:600;color:var(--fg);text-wrap:pretty}
+html.film .card .note{margin-top:.85rem;font-size:.66rem;line-height:1.5;text-wrap:pretty}
+html.measuring .who-head,html.measuring .who-head *,html.measuring .card-in{transform:none!important}
 
 /* Kapitel 8 */
 html.film .s8 .beat{align-items:flex-end;padding-bottom:calc(44vh + 2.2rem)}
@@ -450,7 +460,7 @@ html.film body.locked.dlg-on{touch-action:auto}
 /* ===================== Mobil ===================== */
 @media (max-width:759px),(max-width:1099px) and (orientation:portrait){
   :root{--gut:1.35rem}
-  html.film .track{height:2520vh}
+  html.film .track{height:2972vh}
   html.film .top{padding:1rem 1.1rem 0}
   html.film .top .logo img{height:1.35rem}
   .hl{left:1.1rem;right:1.1rem}
@@ -518,14 +528,17 @@ html.film body.locked.dlg-on{touch-action:auto}
   html.film .gz-tip{max-width:10.4rem;padding:.55rem .65rem .65rem}
   html.film .gz-k{font-size:.56rem;letter-spacing:.06em}
   html.film .gz-s{font-size:.8rem;line-height:1.36}
-  html.film .note{right:auto;left:2.1rem;top:auto;bottom:3.55rem;translate:none;font-size:.56rem;letter-spacing:.06em;white-space:nowrap;max-width:none;line-height:1.6}
+  html.film .s6 .note{right:auto;left:2.1rem;top:auto;bottom:3.55rem;translate:none;font-size:.56rem;letter-spacing:.06em;white-space:nowrap;max-width:none;line-height:1.6}
   html.film .b7a{align-items:flex-end;padding-bottom:11vh}
   html.film .who-head{width:auto}
   html.film .who-note{margin-top:.9rem;font-size:.92rem;line-height:1.45}
-  html.film .card-in{left:2.1rem;right:1.35rem;width:auto;bottom:4.9rem}
-  html.film .card .idx{margin-bottom:.8rem;font-size:.66rem}
-  html.film .card h3{font-size:clamp(2rem,10.4vw,3.3rem)}
-  html.film .card p{margin-top:.9rem;font-size:.7rem;letter-spacing:.04em}
+  html.film .card-in{left:2.1rem;right:1.35rem;width:auto;bottom:4.4rem}
+  html.film .card .idx{margin-bottom:.7rem;font-size:.66rem}
+  html.film .card h3{font-size:clamp(1.9rem,10vw,3.2rem)}
+  html.film .c8 h3{max-width:none}
+  html.film .card p{margin-top:.8rem;font-size:.68rem;line-height:1.45;letter-spacing:.04em}
+  html.film .card .offer{margin-top:.75rem;font-size:clamp(.875rem,3.85vw,1.1rem);line-height:1.42;letter-spacing:0}
+  html.film .card .note{margin-top:.55rem;font-size:.625rem;line-height:1.45}
   html.film .s8 .beat{padding-bottom:calc(56vh + 1.4rem)}
   html.film .b8b,html.film .b8d{padding-top:calc(44vh + 2.6rem) !important}
   html.film .b9{align-items:flex-end;padding-bottom:4.6rem}
@@ -543,11 +556,26 @@ html.film body.locked.dlg-on{touch-action:auto}
   .way{grid-template-columns:1fr auto}
   .way .k{grid-column:1}.way .v{grid-column:1;grid-row:2}.way .arrow{grid-row:1 / span 2}
 }
+/* Handy mit niedrigem Schirm: die laengste Karte (06) setzt Unterzeile und Angebot eine Stufe kleiner, so bleibt ihre Zeichnung
+   nah an der Groesse der anderen. Im Auftakt gibt die Ueberschrift den acht Keimen Platz. */
+@media (max-width:759px) and (max-height:600px){
+  html.film .c6 p{margin-top:.55rem}
+  html.film .c6 .offer{margin-top:.6rem;font-size:clamp(.8125rem,3.5vw,1rem);line-height:1.38}
+  html.film .c6 .note{margin-top:.45rem}
+}
+@media (max-width:759px) and (max-height:560px){
+  html.film .b7a h2{font-size:1.45rem}
+  html.film .who-note{margin-top:.7rem;font-size:.875rem;line-height:1.42}
+}
+@media (max-width:759px) and (max-height:500px){
+  html.film .b7a h2{font-size:1.3rem}
+}
 @media (min-width:760px) and (max-width:1199px) and (orientation:landscape){
   html.film .b3b p{max-width:18ch;font-size:clamp(1.4rem,2.8vw,3.2rem)}
   html.film .b3d p{font-size:clamp(1.6rem,3.6vw,4.6rem)}
   html.film .b4b p{font-size:clamp(2.2rem,4.6vw,5rem)}
-  html.film .card h3{font-size:clamp(2.2rem,4.8vw,6.2rem)}
+  html.film .card h3{font-size:clamp(2.2rem,min(4.8vw,10vh),6.2rem)}
+  html.film .card-in{width:40vw}
   html.film .contact{width:min(48vw,50rem)}
 }
 @media (min-width:760px) and (max-aspect-ratio:3/2) and (orientation:landscape){

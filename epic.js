@@ -51,13 +51,14 @@
   /* ---------- Grundzustand ---------- */
   var W = 0, H = 0, M = false, dpr = 1, N = 0, maxScroll = 1, trackH = 0;
   var REM = 16, HT = 70, HB = 58, IX = 96;   // HUD-Baender und Spalte des Kapitelindex
-  var LEN_D = 36.8, LEN_M = 25.2;            // Filmlaenge in Bildschirmhoehen
+  var LEN_D = 39.18, LEN_M = 29.72;          // Filmlaenge in Bildschirmhoehen (wie html.film .track in epic.css: 3918vh und 2972vh)
   /* Scroll und Film laufen nicht im selben Takt. Die Abbildung ist stueckweise linear: [Filmzeit 0..1, Strecke in Bildschirmhoehen].
-     Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten Stueck. Die sechs Welten in Kapitel 7 haben je Welt dieselbe
-     Strecke wie zuvor die fuenf (am Handy etwas mehr), Kapitel 8 und 9 behalten ihre Strecke. Alle Zeiten im Code bleiben Filmzeit. */
-  var K8 = 84.4;                             // Beginn von Kapitel 8 in Filmzeit
-  var MAP_D = [[0, 0], [.164, 4.2], [K8 / 100, 29.25], [1, LEN_D - 1]];
-  var MAP_M = [[0, 0], [.164, 3.22], [.723, 16.45], [K8 / 100, 19.98], [1, LEN_M - 1]];
+     Start und Kapitel 1 (Film 0 bis 16,4 %) liegen auf dem ersten Stueck. Die acht Welten in Kapitel 7 (Film 72,3 bis 88,4) haben ein
+     eigenes Stueck mit mehr Strecke, weil die Karten jetzt ein Angebot tragen und gelesen werden wollen: am Desktop 0,85, am Handy
+     1 Bildschirm je Welt. Kapitel 2 bis 6 und der Auftakt von Kapitel 7 behalten ihr Tempo. Kapitel 8 und 9 behalten ihre Strecke (6,55 und 4,22 Bildschirme). Alle Zeiten im Code bleiben Filmzeit. */
+  var K8 = 88.4;                             // Beginn von Kapitel 8 in Filmzeit
+  var MAP_D = [[0, 0], [.164, 4.2], [.723, 24.79], [K8 / 100, 31.63], [1, LEN_D - 1]];
+  var MAP_M = [[0, 0], [.164, 3.22], [.723, 16.45], [K8 / 100, 24.5], [1, LEN_M - 1]];
   var MAP = MAP_D;
   function s2p(s) { var h = s * MAP[MAP.length - 1][1], i; for (i = 1; i < MAP.length; i++) if (h <= MAP[i][1] || i === MAP.length - 1) return MAP[i - 1][0] + (h - MAP[i - 1][1]) * (MAP[i][0] - MAP[i - 1][0]) / (MAP[i][1] - MAP[i - 1][1]); return 1; }
   function p2s(q) { var i; for (i = 1; i < MAP.length; i++) if (q <= MAP[i][0] || i === MAP.length - 1) return (MAP[i - 1][1] + (q - MAP[i - 1][0]) * (MAP[i][1] - MAP[i - 1][1]) / (MAP[i][0] - MAP[i - 1][0])) / MAP[MAP.length - 1][1]; return 1; }
@@ -74,15 +75,18 @@
   var film = $('#film'), track = $('#track'), hint = $('#hint'), foot = $('#foot');
   var flash = doc.createElement('div'); flash.className = 'flash'; flash.setAttribute('aria-hidden', 'true'); body.appendChild(flash);
 
-  /* Kapitel 7 traegt sechs Welten und endet bei 84,4 statt 82,2: auch die letzte Welt steht so lange wie die anderen.
+  /* Kapitel 7 traegt acht Welten und endet bei 88,4 statt 82,2: auch die letzte Welt steht so lange wie die anderen.
      Kapitel 8 und 9 ruecken nach: late() rechnet ihre Zeiten aus der alten Zaehlung (82,2 bis 100) in die neue Filmzeit
-     (84,4 bis 100), KL ist der Faktor fuer Dauern. Die Strecke der beiden Kapitel bleibt gleich (MAP_D, MAP_M). */
+     (88,4 bis 100), KL ist der Faktor fuer Dauern. Die Strecke der beiden Kapitel bleibt gleich (MAP_D, MAP_M). */
   var KL = (100 - K8) / 17.8;
   function late(x) { return K8 + (x - 82.2) * KL; }
+  /* Einige kurze Dauern in Kapitel 8 und 9 standen in der Live-Fassung (Kapitel 8 ab 84,4) ungerafft in Filmzeit: Nachlauf und Vorlauf
+     des Schwarms am Wischer, die Vignette, das Einblenden (show) und der Rand der Szenen. KS haelt ihre Strecke genau wie live. */
+  var KS = (100 - K8) / 15.6;
   var CH = [0, 2.6, 16.4, 26, 38.2, 45.6, 55.4, 69.1, K8, late(94.0)];
   var CHJ = [0, 3.5, 19.6, 28.2, 40.3, 48, 59.5, 71.1, late(84), 99.6];
   var CHN = ['Start', 'Die Geschichte', 'Das Problem', 'Das Wissen', 'Die Arbeit', 'Die Werkzeuge', 'Der Weg', 'Für wen', 'Das erste Gespräch', 'Kontakt'];
-  var WA = [72.3, 74.3, 76.3, 78.3, 80.3, 82.3], WL = 2, NS = WA.length;   // die sechs Welten in Kapitel 7
+  var WA = [72.3, 74.3, 76.3, 78.3, 80.3, 82.3, 84.3, 86.3], WL = 2, NS = WA.length;   // die acht Welten in Kapitel 7
 
   /* ---------- Welten und Wischer ---------- */
   var NW = 6, NB = NW * 25;
@@ -140,6 +144,7 @@
     if (op !== PZ.op) { h1.style.opacity = op; PZ.op = op; }
   }
 
+  var WD = .45;   // Dauer der Welle bei den acht Weltwechseln in Kapitel 7: sie hat den Text der Karte hinter sich, bevor die Karte steht
   var WIPES = [
     { at: PZ.a, dur: PZ.b - PZ.a, to: 2, type: 'rect', o: function () { return [PZ.cx, PZ.cy]; } },
     { at: 6.0, dur: 1.0, to: 0, o: function () { return [G.cur.tx, G.cur.ty]; } },
@@ -148,15 +153,20 @@
     { at: 45.6, dur: 1.2, to: 2, o: function () { var I = G.icon, u = I.S / 128; return [I.cx + 24 * u, I.cy - 20 * u]; } },
     { at: 55.4, dur: 1.0, to: 0, o: function () { return G.fun.vert ? [G.fun.cc, H * .16] : [W * .1, G.fun.cc]; } },
     { at: 69.1, dur: .6, to: 2, o: function () { var K = G.fun.mk; return [K.ox + 88 * K.u, K.oy + 31 * K.u]; } },
-    { at: WA[0], dur: .6, to: 0, o: function () { return G.seed(0); } },
-    { at: WA[1], dur: .6, to: 1, o: function () { return [G.pic.cx, G.pic.cy]; } },
-    { at: WA[2], dur: .6, to: 2, o: function () { return [G.pic.cx, G.pic.cy]; } },
-    { at: WA[3], dur: .6, to: 4, o: function () { return [G.pic.cx, G.pic.cy]; } },
-    { at: WA[4], dur: .6, to: 3, o: function () { return [G.pic.cx, G.pic.cy]; } },
-    { at: WA[5], dur: .6, to: 5, o: function () { return [G.pic.cx, G.pic.cy]; } },
+    { at: WA[0], dur: WD, to: 0, o: function () { return G.seed(0); } },
+    { at: WA[1], dur: WD, to: 1, o: function () { return picC(0); } },
+    { at: WA[2], dur: WD, to: 2, o: function () { return picC(1); } },
+    { at: WA[3], dur: WD, to: 4, o: function () { return picC(2); } },
+    { at: WA[4], dur: WD, to: 3, o: function () { return picC(3); } },
+    { at: WA[5], dur: WD, to: 5, o: function () { return picC(4); } },
+    { at: WA[6], dur: WD, to: 1, o: function () { return picC(5); } },
+    { at: WA[7], dur: WD, to: 0, o: function () { return picC(6); } },
     { at: K8, dur: .7 * KL, to: 1, o: function () { return [G.eye.x0, G.hor]; } },
     { at: late(94.0), dur: 1.0 * KL, to: 0, o: function () { return [(G.eye.x0 + G.eye.x1) / 2, G.hor]; } }
   ];
+  /* Kapitel 7: jede Welt hat ihr eigenes Feld (fitPic). Der Klick zur naechsten Welt sitzt in der Mitte des Bildes, das gerade steht. */
+  function picOf(j) { return (G.pics && G.pics[j]) || G.pic; }
+  function picC(j) { var b = picOf(j); return [b.cx, b.cy]; }
   var ign = null;            // Zuendung: gruener Ring, zeitgesteuert
   var ripples = [];          // Klick-Wellen
   var AW = [];               // aktive Wischer dieses Frames
@@ -1052,7 +1062,7 @@
   var GZ = { hot: -1, pin: -1, pinP: 0, k: [0, 0, 0, 0], cx: 0, cy: 0, cw: 0, ch: 0 };
   function rrect(x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r); ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r); ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r); ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath(); }
 
-  /* 11 bis 16 · Sechs Welten. Jedes Bild ist eine Zeichnung, die der Schwarm formt. */
+  /* 11 bis 18 · Acht Welten. Jedes Bild ist eine Zeichnung, die der Schwarm formt. */
   function Pic() { this.P = []; this.X = []; }
   Pic.prototype = {
     line: function (x1, y1, x2, y2, g, r, wt) { this.P.push({ t: 0, a: [x1, y1, x2, y2], g: g || 0, r: r || 0, w: Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) * (wt || 1) }); return this; },
@@ -1081,15 +1091,72 @@
     }
     return pts;
   }
+  /* Handy, Auftakt zu Kapitel 7: ein Keim traegt nur gut 300 Punkte. Sie gehen alle in die tragenden Linien der Zeichnung, in gleichen
+     Abstaenden ueber die ganze Laenge, so bleiben die Linien geschlossen. Flaechen und Raster (Teig, Zellen, Fenster), graue Nebenlinien
+     und einzelne kurze Striche bleiben weg. Eine kleine Scheibe wird ein Punkt, eine grosse ein Kreis, das Dreieck im Bildschirm ein
+     Umriss. Wo zwei Linien fast aufeinander liegen (Zellen des Solarfelds), steht nur eine. */
+  function outlinePts(pic, K) {
+    var P = pic.P, L = new Pic(), D = [], C = [], pts = [], tot = 0, i, j, n, q, a, c, l, st, acc, d, k, x, y, r2, ok, it, want;
+    for (i = 0; i < P.length; i++) {
+      q = P[i]; a = q.a;
+      if (q.t === 0 || q.t === 2) { if (q.r !== 4) L.P.push(q); }
+      else if (q.t === 3) { if (a[2] < .03) D.push([a[0], a[1], q.g, q.r, 1]); else L.circ(a[0], a[1], a[2], q.g, q.r); }
+      else if (q.t === 1) D.push([a[0] + a[2] / 2, a[1] + a[3] / 2, q.g, q.r, 1]);
+      else if (a.length < 4) L.poly(a, q.g, q.r, true);
+    }
+    // Ketten: Strecken, die aneinander anschliessen, zaehlen als eine Linie
+    for (i = 0, c = null; i < L.P.length; i++) {
+      q = L.P[i]; a = q.a; l = q.t ? a[2] * Math.abs(a[4] - a[3]) : Math.sqrt((a[2] - a[0]) * (a[2] - a[0]) + (a[3] - a[1]) * (a[3] - a[1]));
+      if (!q.t && c && !c.t && Math.abs(a[0] - c.x) + Math.abs(a[1] - c.y) < 1e-6) { c.q.push(q); c.l += l; }
+      else { c = { t: q.t, q: [q], l: l }; C.push(c); }
+      c.x = a[2]; c.y = a[3];
+    }
+    P = [];
+    for (i = 0; i < C.length; i++) if (C[i].l >= .045) for (j = 0; j < C[i].q.length; j++) { q = C[i].q[j]; P.push({ t: q.t, a: q.a, g: q.g, r: q.r, w: q.w, c: i }); tot += q.w; }
+    want = Math.max(10, K - D.length); st = tot / want;
+    for (it = 0; it < 6 && tot > 0; it++) {
+      pts = []; acc = st / 2; r2 = st * st * .25;
+      for (i = 0; i < P.length; i++) {
+        q = P[i]; a = q.a;
+        for (d = acc; d < q.w; d += st) {
+          k = d / q.w;
+          if (q.t === 0) { x = a[0] + (a[2] - a[0]) * k; y = a[1] + (a[3] - a[1]) * k; }
+          else { k = a[3] + (a[4] - a[3]) * k; x = a[0] + Math.cos(k) * a[2]; y = a[1] + Math.sin(k) * a[2]; }
+          for (n = pts.length - 1, ok = true; n >= 0 && ok; n--) if (pts[n][5] !== q.c && (pts[n][0] - x) * (pts[n][0] - x) + (pts[n][1] - y) * (pts[n][1] - y) < r2) ok = false;
+          if (ok) pts.push([x, y, q.g, q.r, 0, q.c]);
+        }
+        acc = d - q.w;
+      }
+      if (pts.length >= want * .97 && pts.length <= want) break;
+      st *= (pts.length + 1) / (want * .985);
+    }
+    return pts.concat(D);
+  }
+  /* Rahmen einer Zeichnung im Einheitsquadrat [links, oben, rechts, unten]: so weit ragt sie ueber ihr Feld hinaus (fitPic) */
+  function picBB(pic) {
+    var b = [1e9, 1e9, -1e9, -1e9], P = pic.P, X = pic.X, i, j, q, a, k;
+    function add(x, y) { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; }
+    for (i = 0; i < P.length; i++) {
+      q = P[i]; a = q.a;
+      if (q.t === 0) { add(a[0], a[1]); add(a[2], a[3]); }
+      else if (q.t === 1) { add(a[0], a[1]); add(a[0] + a[2], a[1] + a[3]); }
+      else if (q.t === 2) for (j = 0; j <= 24; j++) { k = a[3] + (a[4] - a[3]) * j / 24; add(a[0] + Math.cos(k) * a[2], a[1] + Math.sin(k) * a[2]); }
+      else if (q.t === 3) { add(a[0] - a[2], a[1] - a[2]); add(a[0] + a[2], a[1] + a[2]); }
+      else for (j = 0; j < a.length; j++) add(a[j][0], a[j][1]);
+    }
+    for (i = 0; i < X.length; i++) add(X[i][0], X[i][1]);
+    if (!(b[2] > b[0]) || !(b[3] > b[1])) return [0, 0, 1, 1];
+    return [Math.min(b[0], .1), Math.min(b[1], .1), Math.max(b[2], .9), Math.max(b[3], .9)];
+  }
   var MX = 0, MY = 0, MA = 1, MR = 0, MS = 0;   // Ablage fuer Bewegungen einzelner Bildgruppen
   function rot(cx, cy, an) { var dx = MX - cx, dy = MY - cy, c = Math.cos(an), s = Math.sin(an); MX = cx + dx * c - dy * s; MY = cy + dx * s + dy * c; }
   var PICS = [];
   function picForm(idx, name, build, mods) {
     var px, py, pg, pr, ps, pk;
     var f = {
-      name: name, pts: null,
+      name: name, pts: null, out: null, bb: [0, 0, 1, 1],
       init: function () {
-        var pic = new Pic(); build(pic);
+        var pic = new Pic(); build(pic); f.bb = picBB(pic);
         var nx = Math.min(pic.X.length, N), lin = samplePic(pic, Math.max(10, Math.floor(N * .9) - nx)), base = lin.length, perm = shuffle(base, 50 + idx), nl = Math.min(base, N - nx), i, q;
         px = new Float32Array(N); py = new Float32Array(N); pg = new Uint8Array(N); pr = new Uint8Array(N); ps = new Float32Array(N); pk = new Float32Array(N);
         // feste Punkte (Fenster) zuerst, sie duerfen nie fehlen
@@ -1100,9 +1167,10 @@
           px[i] = q[0]; py[i] = q[1]; pg[i] = q[2]; pr[i] = q[3]; ps[i] = q[4]; pk[i] = (i * .61803) % 1;
         }
         f.pts = lin.concat(pic.X);
+        f.out = M ? outlinePts(pic, Math.ceil(N / NS)) : null;
       },
       run: function (o, p, t) {
-        var B_ = G.pic, s = B_.s, x0 = B_.cx - s / 2, y0 = B_.cy - s / 2, lk = seg(p, WA[idx] + .3, WA[idx] + WL), i, g, m, dsz = M ? 1.7 : 2;
+        var B_ = picOf(idx), s = B_.s, x0 = B_.cx - s / 2, y0 = B_.cy - s / 2, lk = seg(p, WA[idx] + .3, WA[idx] + WL), i, g, m, dsz = M ? 1.7 : 2;
         for (i = 0; i < N; i++) {
           g = pg[i];
           if (g === 255) { o.x[i] = x0 + R1[i] * s; o.y[i] = y0 + R2[i] * s; o.a[i] = 0; o.s[i] = 1; o.r[i] = 0; continue; }
@@ -1112,6 +1180,7 @@
         }
       }
     };
+    try { var pic0 = new Pic(); build(pic0); f.bb = picBB(pic0); } catch (e) {}
     PICS[idx] = f;
     return f;
   }
@@ -1288,17 +1357,185 @@
     return m;
   })());
 
-  /* Auftakt zu Kapitel 7: sechs Keime, aus jedem wird eine Welt */
+  /* Welt 7 und Welt 8: die Zeichnungen stehen jeweils als ganzer Block zwischen START und ENDE.
+     Fest bleiben die Namen FORM.w7 und FORM.w8 und die Nummern 6 und 7 in picForm(). */
+  /* W7-START */
+  /* Welt 7 · Baeckereien: die Brezel haengt am Ausleger, das Brett fuellt sich Laib fuer Laib, das frische Brot dampft */
+  var W7 = { px: .37, py: .085, ty: .86, sa: 0, sc: 1, ss: 0, st: -1 };   // Ring, an dem die Brezel pendelt, Oberkante des Bretts, Ablage fuer den Pendelwinkel je Bild
+  FORM.w7 = picForm(6, 'Backstube', function (P) {
+    var hx = W7.px, hy = W7.py, ty = W7.ty, bx = hx, by = .42, a = .27, m = 6, C = [], i, j, s, u, n, p0, p1, p2, p3, x, y, dx, dy, d, sg, ok, was, ox, oy, qx, qy;
+    // Stuetzpunkte der Brezel: x, y, halbe Dicke, Lage (der Arm mit der hoeheren Zahl liegt oben)
+    var K = [[-.42, .6, .058, 3], [-.2, .3, .056, 3], [0, .02, .056, 3], [.2, -.3, .06, 3], [.42, -.58, .07, 1], [.7, -.66, .085, 1], [.93, -.42, .095, 1], [1, -.02, .105, 1], [.87, .4, .118, 1], [.5, .7, .135, 1], [0, .8, .145, 1]];
+    for (i = 9; i >= 0; i--) K.push([-K[i][0], K[i][1], K[i][2], i < 4 ? 2 : 1]);
+    function cr(a0, a1, a2, a3, t) { return .5 * (2 * a1 + (a2 - a0) * t + (2 * a0 - 5 * a1 + 4 * a2 - a3) * t * t + (3 * a1 - a0 - 3 * a2 + a3) * t * t * t); }
+    function dome(x0, y0, w, h, e) { var pts = [], q, an, c; for (q = 0; q <= 16; q++) { an = PI + q / 16 * PI; c = Math.cos(an); pts.push([x0 + (c < 0 ? -1 : 1) * Math.pow(Math.abs(c), e) * w / 2, y0 - Math.pow(Math.abs(Math.sin(an)), .8) * h]); } return pts; }
+    function loaf(g, x0, w, h, e) { P.poly(dome(x0, ty, w, h, e), 10 + g, 0, false, 1.2); P.shape(dome(x0, ty - .013, w - .036, h - .028, e), 20 + g, 1, 24); }
+    function cut(g, x0, y0, l, sl) { P.line(x0 - l * sl, y0 + l, x0 + l * sl, y0 - l, 10 + g, 0); }
+    function steam(g, x0, y0, h, ph) { var pts = [], q, v; for (q = 0; q <= 14; q++) { v = q / 14; pts.push([x0 + Math.sin(v * 7 + ph) * .024 * (.3 + v), y0 - v * h]); } P.poly(pts, 30 + g, 1, false, 1.1); }
+
+    // Wand, Ausleger mit Strebe und Schnecke
+    P.line(0, -.03, 0, .3, 0, 0, 1.16); P.rect(0, .025, .022, .2, 0, 0);
+    P.line(.022, .06, .7, .06, 0, 0, 1.3); P.circ(.7, .086, .026, 0, 0, -PI / 2, PI * .9);
+    P.circ(.022 + .13, .06 + .13, .13, 0, 0, PI, PI * 1.5);
+
+    // die Brezel: Mittellinie, zwei Raender, was unter einem Arm liegt, faellt weg
+    for (s = 0; s < K.length - 1; s++) {
+      p0 = K[Math.max(0, s - 1)]; p1 = K[s]; p2 = K[s + 1]; p3 = K[Math.min(K.length - 1, s + 2)];
+      for (j = 0; j < m; j++) { u = j / m; C.push([bx + cr(p0[0], p1[0], p2[0], p3[0], u) * a, by + cr(p0[1], p1[1], p2[1], p3[1], u) * a, (p1[2] + (p2[2] - p1[2]) * u) * a, u < .5 ? p1[3] : p2[3], 0, 0]); }
+    }
+    p1 = K[K.length - 1]; C.push([bx + p1[0] * a, by + p1[1] * a, p1[2] * a, p1[3], 0, 0]); n = C.length;
+    for (i = 0; i < n; i++) { p0 = C[Math.max(0, i - 1)]; p2 = C[Math.min(n - 1, i + 1)]; dx = p2[0] - p0[0]; dy = p2[1] - p0[1]; d = Math.sqrt(dx * dx + dy * dy) || 1; C[i][4] = -dy / d; C[i][5] = dx / d; }
+    for (sg = -1; sg < 2; sg += 2) {
+      was = false;
+      for (i = 0; i < n; i++) {
+        p1 = C[i]; qx = p1[0] + p1[4] * p1[2] * sg; qy = p1[1] + p1[5] * p1[2] * sg; ok = true;
+        for (j = 0; j < n && ok; j++) { p2 = C[j]; if (p2[3] > p1[3] && Math.abs(j - i) > 2 * m && (qx - p2[0]) * (qx - p2[0]) + (qy - p2[1]) * (qy - p2[1]) < p2[2] * p2[2] * .94) ok = false; }
+        if (ok && was) P.line(ox, oy, qx, qy, 1, 0, 1.6);
+        ox = qx; oy = qy; was = ok;
+      }
+    }
+    p1 = C[0]; d = Math.atan2(-p1[4], p1[5]); P.circ(p1[0], p1[1], p1[2], 1, 0, d + PI / 2, d + PI * 1.5, 1.6);
+    p1 = C[n - 1]; d = Math.atan2(-p1[4], p1[5]); P.circ(p1[0], p1[1], p1[2], 1, 0, d - PI / 2, d + PI / 2, 1.6);
+    // der Teig: ein Raster im Bauch und in den Schultern, die Arme bleiben frei
+    u = M ? .017 : .0095;
+    for (y = by - .8 * a + u / 2; y < by + a; y += u) for (x = bx - 1.15 * a + u / 2; x < bx + 1.15 * a; x += u) {
+      ok = false;
+      for (j = 0; j < n; j++) { p2 = C[j]; d = (x - p2[0]) * (x - p2[0]) + (y - p2[1]) * (y - p2[1]); if (p2[3] > 1) { if (d < (p2[2] + .009) * (p2[2] + .009)) { ok = false; break; } } else if (d < (p2[2] - .011) * (p2[2] - .011)) ok = true; }
+      if (ok) P.dot(x, y, 5, 1, M ? 2.36 : 2);
+    }
+    // Salz
+    for (i = 5 * m + 2, j = 0; i <= 15 * m; i += 4, j++) { p1 = C[i]; d = ((j * 7) % 5 - 2) * .26; P.dot(p1[0] + p1[4] * p1[2] * d, p1[1] + p1[5] * p1[2] * d, 3, 1, 5.8); }
+    // Ring und Ketten
+    P.line(hx, .06, hx, hy - .012, 0, 0); P.circ(hx, hy, .012, 2, 0);
+    P.line(hx - .008, hy + .01, bx - .62 * a, by - .745 * a, 2, 0); P.line(hx + .008, hy + .01, bx + .62 * a, by - .745 * a, 2, 0);
+
+    // das Brett mit zwei Konsolen
+    P.rect(-.04, ty, 1.08, .028, 0, 0, 1.12);
+    for (i = -1; i < 2; i += 2) { x = .5 + i * .4; P.line(x, ty + .028, x, ty + .12, 0, 0); P.line(x, ty + .12, x - i * .1, ty + .028, 0, 0); P.line(x + i * .016, ty + .028, x + i * .016, ty + .12, 0, 4, .7); }
+
+    // Brot und Broetchen: Gruppe 10 + j ist der Rand, 20 + j das Innere, 30 + j der Dampf
+    loaf(0, .11, .22, .125, .68); for (i = -1; i < 2; i++) cut(0, .11 + i * .045, ty - .066 + Math.abs(i) * .008, .026, .6);
+    loaf(1, .285, .1, .058, .7); loaf(1, .39, .1, .058, .7); cut(1, .285, ty - .03, .014, .5); cut(1, .39, ty - .03, .014, .5);
+    P.poly(dome(.3375, ty - .058, .1, .058, .7), 11, 0, true, 1.2); P.shape(dome(.3375, ty - .071, .064, .03, .7), 21, 1, 24); cut(1, .3375, ty - .088, .014, .5);
+    loaf(2, .56, .23, .075, .5); for (i = -2; i < 2; i++) cut(2, .585 + i * .048, ty - .04, .018, -.7);
+    loaf(3, .805, .23, .14, .68); for (i = -1; i < 2; i++) cut(3, .8 + i * .047, ty - .074 + Math.abs(i) * .008, .028, .6);
+    loaf(4, .975, .1, .058, .7); cut(4, .975, ty - .03, .014, .5);
+    // Dampf ueber dem frischen Brot
+    steam(3, .74, ty - .15, .3, 0); steam(3, .8, ty - .17, .4, 2); steam(3, .86, ty - .15, .3, 4);
+    steam(4, .975, ty - .08, .24, 1);
+  }, (function () {
+    // die Brezel pendelt am Ring (Winkel einmal je Bild gerechnet); die Laibe kommen mit dem Scrollen von rechts nach links, davor steht nur ihr Platz in Grau;
+    // das Salz leuchtet nach und nach auf, der Dampf zieht nach oben
+    function sway(t) { var dx, dy; if (t !== W7.st) { W7.st = t; W7.sa = Math.sin(t * .9) * .03; W7.sc = Math.cos(W7.sa); W7.ss = Math.sin(W7.sa); } dx = MX - W7.px; dy = MY - W7.py; MX = W7.px + dx * W7.sc - dy * W7.ss; MY = W7.py + dx * W7.ss + dy * W7.sc; }
+    var m = {
+      1: function (t) { sway(t); },
+      2: function (t) { sway(t); },
+      3: function (t, lk, k) { if (k < .3 + .7 * lk) MA = .75 + .25 * Math.sin(t * 2.2 + k * 40); else { MA = .45; MR = 4; } sway(t); },
+      5: function (t) { MA = .8; sway(t); }
+    }, TH = [.8, .64, .48, 0, .3], q;
+    function rim(th) { return function (t, lk) { var v = (lk - th) / .07; if (v <= 0) { MA = .34; MR = 4; } else if (v < 1) { MY -= (1 - v) * (1 - v) * .05; } }; }
+    function body(th) { return function (t, lk) { var v = (lk - th) / .07; if (v <= 0) MA = 0; else if (v < 1) { MY -= (1 - v) * (1 - v) * .05; MA = .86 * v; } }; }
+    function mist(th) { return function (t, lk, k) { var v = (lk - th - .07) / .1, h = W7.ty - MY; if (v <= 0) { MA = 0; return; } if (v > 1) v = 1; MX += Math.sin(t * 1.1 + h * 16) * .02 * h; MA = v * (.34 + .6 * Math.pow(Math.sin(h * 15 - t * 1.6 + k), 2)) * (1 - h * 1.1); }; }
+    for (q = 0; q < 5; q++) { m[10 + q] = rim(TH[q]); m[20 + q] = body(TH[q]); m[30 + q] = mist(TH[q]); }
+    return m;
+  })());
+  /* W7-END */
+
+  /* W8-START */
+  /* Welt 8 · Strukturvertriebe: einer steht oben, darunter waechst die Struktur Ebene fuer Ebene, neue Partner leuchten gruen */
+  var W8 = (function () {
+    var o = {
+      n: [1, 2, 4, 8],                  // Partner je Ebene
+      hy: [.04, .34, .61, .855],        // Kopfmitte je Ebene
+      hr: [.042, .033, .027, .022],     // Kopfradius je Ebene
+      a: [-1, -.1, .2, .5],             // ab diesem lk waechst die Ebene
+      sp: [0, .04, .08, .17],           // so lange dauert es, bis alle Partner einer Ebene da sind
+      ox: 0, sx: 1,                     // Lage und Breite der Struktur im Bild: sie fuellt ihr Feld, den Abstand zur Karte haelt fitPic()
+      rb: [], by: [], fy: [], c0: [0], c1: [0], st: []
+    }, L, j, n;
+    for (L = 0; L < 4; L++) {
+      n = o.n[L];
+      o.rb[L] = o.hr[L] * 1.75;                        // Radius der Schultern
+      o.by[L] = o.hy[L] + o.hr[L] * 1.4 + o.rb[L];     // Unterkante der Figur
+      o.fy[L] = o.hy[L] + o.hr[L] * 1.2;               // Mitte der Figur, aus ihr waechst sie
+      if (L < 3) o.c0[L + 1] = o.by[L] + .024;         // hier beginnen die Linien zur naechsten Ebene
+      if (L) o.c1[L] = o.hy[L] - o.hr[L] - .024;       // hier kommen sie an
+      o.st[L] = [];                                    // Reihenfolge, in der die Partner einer Ebene dazukommen
+      for (j = 0; j < n; j++) o.st[L][j] = o.a[L] + ((j * 3) % n) / n * o.sp[L];
+    }
+    return o;
+  })();
+  FORM.w8 = picForm(7, 'Struktur', function (P) {
+    var L, j, n, cx, hy, hr, rb, by, i, pts;
+    for (L = 0; L < 4; L++) {
+      n = W8.n[L]; hr = W8.hr[L]; hy = W8.hy[L]; rb = W8.rb[L]; by = W8.by[L];
+      for (j = 0; j < n; j++) {
+        cx = W8.ox + W8.sx * (j + .5) / n;
+        if (L) P.line(W8.ox + W8.sx * (Math.floor(j / 2) + .5) / (n / 2), W8.c0[L], cx, W8.c1[L], L, 0, 1.1);
+        P.disc(cx, hy, hr, 10 + L, 1, 90);
+        P.circ(cx, by, rb, 10 + L, 0, PI, TAU, 1.4); P.line(cx - rb, by, cx + rb, by, 10 + L, 0, 1.4);
+        if (!L) {
+          // wer oben steht, ist ausgefuellt
+          pts = []; for (i = 0; i <= 14; i++) pts.push([cx - Math.cos(i / 14 * PI) * (rb - .01), by - .008 - Math.sin(i / 14 * PI) * (rb - .014)]);
+          P.shape(pts, 10, 0, 64);
+        }
+      }
+    }
+  }, (function () {
+    var m = {}, L;
+    // Impulse laufen von oben durch die Struktur, d ist die Tiefe in Ebenen
+    function wave(t, d) { var x = fract((d - t * .5) / 2.6); if (x > .5) x = 1 - x; x = 1 - x * 16; return x > 0 ? x : 0; }
+    function link(L) {
+      var n = W8.n[L], st = W8.st[L], y0 = W8.c0[L], dy = 1 / (W8.c1[L] - W8.c0[L]);
+      return function (t, lk, k) {
+        var j = Math.floor((MX - W8.ox) / W8.sx * n), u = (MY - y0) * dy, q;
+        if (j < 0) j = 0; else if (j > n - 1) j = n - 1;
+        if (u > (lk - st[j]) * 10) { MA = 0; return; }          // die Linie waechst vom Partner oben nach unten
+        q = wave(t, L - 1 + u);
+        MA = .62 + .38 * q; if (q > .3) { MR = 1; MS += (M ? .7 : 1.2) * q; }
+      };
+    }
+    function figure(L) {
+      var n = W8.n[L], st = W8.st[L], cy = W8.fy[L], a2 = L < 3 ? W8.a[L + 1] + .1 : 9, lk0 = -1, t0 = -1, nw = 0, gh = 0, qf = 0;
+      return function (t, lk, k) {
+        var j = Math.floor((MX - W8.ox) / W8.sx * n), cx, ap, e, head = MR === 1;
+        if (j < 0) j = 0; else if (j > n - 1) j = n - 1;
+        if (lk !== lk0) { lk0 = lk; nw = L ? 1 - sstep(a2, a2 + .14, lk) : 0; gh = L < 2 ? 0 : seg(lk, W8.a[L] - .1, W8.a[L] - .02); }
+        if (t !== t0) { t0 = t; qf = wave(t, L); }
+        ap = (lk - st[j] - .1) / .07;
+        if (ap <= 0) {
+          // der freie Platz: ein blasser, gestrichelter Umriss, bevor jemand kommt
+          if (gh <= 0 || (!head && ((!M && k > .6) || fract((MX * 1.4 + MY) * 46) > .55))) { MA = 0; return; }
+          MA = (head ? .3 : .2) * gh; MR = 4; return;
+        }
+        if (ap < 1) { cx = W8.ox + W8.sx * (j + .5) / n; e = (.35 + .65 * eo(ap)) * (1 + .3 * ap * (1 - ap)); MX = cx + (MX - cx) * e; MY = cy + (MY - cy) * e; } else ap = 1;
+        if (k < nw) {
+          // neu: ganz in Gruen, der Schein atmet
+          MR = 1; MA = ap; e = (M ? .06 : .12) * nw * nw;
+          if (k < e && k < e * (.62 + .38 * Math.sin(t * 1.8 + j * 1.3))) MS = 2.6;
+        } else { MA = (head ? .9 : .84) * ap; if (!L) MR = 0; else if (qf > .35) MR = 1; }   // angekommen: Elfenbein, der Kopf bleibt gruen
+        if (qf > 0) MS += .5 * qf;
+      };
+    }
+    for (L = 1; L < 4; L++) m[L] = link(L);
+    for (L = 0; L < 4; L++) m[10 + L] = figure(L);
+    return m;
+  })());
+  /* W8-END */
+
+  /* Auftakt zu Kapitel 7: acht Keime in zwei Treppen, aus jedem wird eine Welt */
   FORM.seeds = {
-    name: 'Sechs Welten',
+    name: 'Acht Welten',
     init: function () {},
     run: function (o, p, t) {
-      var i, j, f, q, c, s = G.pic.seedS, n, br;
+      var i, j, f, q, c, s = G.pic.seedS, n, br, ds = M ? clamp(s / 32, 1.5, 2.3) : clamp(s / 62, 1.5, 2);   // groessere Keime, kraeftigere Punkte
+      var K = Math.ceil(N / NS);   // Punkte je Keim
       for (i = 0; i < N; i++) {
-        j = i % NS; f = PICS[j].pts; n = f.length; q = f[(Math.floor(i / NS) * 37) % n]; c = G.seed(j);
+        // jeder Keim nimmt seine Punkte in gleichen Abstaenden aus der ganzen Zeichnung, am Handy nur aus ihren Linien (outlinePts)
+        j = i % NS; f = PICS[j].out || PICS[j].pts; n = f.length; q = f[Math.min(n - 1, Math.floor((Math.floor(i / NS) + .5) * n / K))]; c = G.seed(j);
         br = .5 + .5 * Math.sin(t * 1.4 - j * .9);
         o.x[i] = c[0] + (q[0] - .5) * s; o.y[i] = c[1] + (q[1] - .5) * s + Math.sin(t * .8 + j) * 3;
-        o.a[i] = .7 + .3 * br; o.s[i] = q[4] ? 2.2 : 1.5; o.r[i] = 0;
+        o.a[i] = .7 + .3 * br; o.s[i] = q[4] ? ds * 1.45 : ds; o.r[i] = 0;
         if (j === 5 && q[2] > 0 && q[2] < 4 && q[1] > W6.hy - .007) o.a[i] = 0;   // die Sonne steht auch im Keim auf dem Horizont
       }
     },
@@ -1314,7 +1551,7 @@
     }
   };
 
-  /* 17 · Augenhoehe: eine Linie, zwei Enden, ein Punkt, der von dir zu mir wandert */
+  /* 19 · Augenhoehe: eine Linie, zwei Enden, ein Punkt, der von dir zu mir wandert */
   FORM.horizon = {
     name: 'Augenhöhe',
     init: function () {},
@@ -1358,7 +1595,7 @@
     }
   };
 
-  /* 18 · Signet */
+  /* 20 · Signet */
   FORM.logo = (function () {
     var kd, lx, ly;
     return {
@@ -1423,9 +1660,12 @@
     { n: 'w3', a: WA[2] + .95, b: WA[3] - .02, st: 'wipe', wi: 9, wl: .35 },
     { n: 'w4', a: WA[3] + .95, b: WA[4] - .02, st: 'wipe', wi: 10, wl: .35 },
     { n: 'w5', a: WA[4] + .95, b: WA[5] - .02, st: 'wipe', wi: 11, wl: .35 },
-    { n: 'w6', a: WA[5] + .95, b: K8 - .02, st: 'wipe', wi: 12, wl: .35 },
-    { n: 'horizon', a: late(83.5), b: late(93.95), st: 'wipe', wi: 13 },
-    { n: 'logo', a: late(95.6), b: 100, st: 'wipe', wi: 14, sw: .25 }
+    { n: 'w6', a: WA[5] + .95, b: WA[6] - .02, st: 'wipe', wi: 12, wl: .35 },
+    { n: 'w7', a: WA[6] + .95, b: WA[7] - .02, st: 'wipe', wi: 13, wl: .35 },
+    { n: 'w8', a: WA[7] + .95, b: K8 - .02, st: 'wipe', wi: 14, wl: .35 },
+    /* Kapitel 8 und 9: die Laufzeit des Schwarms hinter dem Wischer (wl, sonst 0,6) behaelt mit KS die Strecke der Live-Fassung */
+    { n: 'horizon', a: late(83.5), b: late(93.95), st: 'wipe', wi: 15, wl: .6 * KS },
+    { n: 'logo', a: late(95.6), b: 100, st: 'wipe', wi: 16, wl: .6 * KS, sw: .25 }
   ];
   var cur = { fa: null, fb: null, m: 0 };
 
@@ -1436,11 +1676,11 @@
     if (!n || p <= c.b) { F.g.fill(0); FORM[c.n].run(F, p, t); cur.fa = c; cur.fb = null; cur.m = 0; return; }
     A.g.fill(0); B.g.fill(0);
     FORM[c.n].run(A, p, t); FORM[n.n].run(B, p, t);
-    var m = (p - c.b) / (n.a - c.b), S = .7, sw = n.sw || 0, mode = n.st, e, d, dx, dy, q, wx = 0, wy = 0, wR = 1, wp = null, pp, wl = n.wl || .6;
+    var m = (p - c.b) / (n.a - c.b), S = .7, sw = n.sw || 0, mode = n.st, e, d, dx, dy, q, wx = 0, wy = 0, wR = 1, wp = null, pp, wl = n.wl || .6, wlead = n.a > K8 ? .1 * KS : .1;
     if (mode === 'wipe') { wp = WIPES[n.wi]; var oo = wp.o(); wx = oo[0]; wy = oo[1]; wR = maxR(wx, wy); }
     var Ax = A.x, Ay = A.y, Bx = B.x, By = B.y;
     for (i = 0; i < N; i++) {
-      if (mode === 'wipe') { pp = wipeReach(wp, Ax[i], Ay[i], wx, wy, wR); e = seg(p, pp - .1, pp + wl); }
+      if (mode === 'wipe') { pp = wipeReach(wp, Ax[i], Ay[i], wx, wy, wR); e = seg(p, pp - wlead, pp + wl); }
       else { d = mode === 'up' ? clamp(1 - Ay[i] / H, 0, 1) * .8 + R3[i] * .2 : R3[i]; e = clamp(m * (1 + S) - S * d, 0, 1); }
       e = eio(e);
       dx = Bx[i] - Ax[i]; dy = By[i] - Ay[i];
@@ -1470,7 +1710,7 @@
   function inZone(x, y, m) { for (var i = 0; i < ZA.length; i++) { var z = ZA[i]; if (x > z.x0 - m && x < z.x1 + m && y > z.y0 - m && y < z.y1 + m) return true; } return false; }
   function activeZones(p) {
     var i, z, w; ZA.length = 0;
-    for (i = 0; i < zones.length; i++) { z = zones[i]; if (p <= z.a0 || p >= z.b1 || !z.w) continue; w = Math.min(seg(p, z.a0, z.a1), 1 - seg(p, z.b0, z.b1)) * z.k; if (w > .01) ZA.push({ x0: z.x, y0: z.y, x1: z.x + z.w, y1: z.y + z.h, k: w }); }
+    for (i = 0; i < zones.length; i++) { z = zones[i]; if (p <= z.a0 || p >= z.b1 || !z.w) continue; w = Math.min(seg(p, z.a0, z.a1), 1 - seg(p, z.b0, z.b1)) * z.k; if (w > .01) ZA.push({ x0: z.x, y0: z.y, x1: z.x + z.w, y1: z.y + z.h, k: w, m: z.m || 0 }); }
   }
 
   function draw(p, t, dt, snap) {
@@ -1515,6 +1755,12 @@
       // Ruhezonen hinter Text: weiche Superellipse, kein Rechteck
       for (j = 0; j < nz; j++) {
         zn = ZA[j];
+        if (zn.m) {
+          // enge Zone (Kapitel 7): im Rahmen des Texts ruhig, nach aussen auf kurzem Weg wieder voll; die Zeichnung daneben bleibt unberuehrt
+          dx = x < zn.x0 ? zn.x0 - x : x > zn.x1 ? x - zn.x1 : 0; dy = y < zn.y0 ? zn.y0 - y : y > zn.y1 ? y - zn.y1 : 0;
+          if (dx < zn.m && dy < zn.m) { d = dx && dy ? Math.sqrt(dx * dx + dy * dy) : dx + dy; if (d < zn.m) a *= 1 - zn.k * (1 - sstep(0, zn.m, d)); }
+          continue;
+        }
         dx = (x - (zn.x0 + zn.x1) * .5) / ((zn.x1 - zn.x0) * .5 + zmx); dy = (y - (zn.y0 + zn.y1) * .5) / ((zn.y1 - zn.y0) * .5 + zmy);
         if (dx > -1 && dx < 1 && dy > -1 && dy < 1) {
           d = Math.pow(dx * dx * dx * dx + dy * dy * dy * dy, .25);
@@ -1588,7 +1834,7 @@
     // Vignette in der schwarzen Welt, weicht vor jedem Weltwechsel zurueck
     if (baseWorld === 0 && !AW.length) {
       var vg = 1, wq;
-      for (i = 0; i < WIPES.length; i++) { wq = WIPES[i]; vg = Math.min(vg, Math.max(seg(wq.at - p, 0, .7), seg(p - (wq.at + wq.dur), 0, .7))); }
+      for (i = 0; i < WIPES.length; i++) { wq = WIPES[i]; vg = Math.min(vg, Math.max(seg(wq.at - p, 0, wq.at > K8 ? .7 * KS : .7), seg(p - (wq.at + wq.dur), 0, wq.at >= K8 ? .7 * KS : .7))); }
       if (vg > .01) {
         if (!draw.vg || draw.vgW !== W || draw.vgH !== H) { draw.vg = ctx.createRadialGradient(W * .5, H * .5, Math.min(W, H) * .35, W * .5, H * .5, Math.sqrt(W * W + H * H) * .56); draw.vg.addColorStop(0, 'rgba(0,0,0,0)'); draw.vg.addColorStop(1, 'rgba(0,0,0,.62)'); draw.vgW = W; draw.vgH = H; }
         ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = vg; ctx.fillStyle = draw.vg; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
@@ -1649,9 +1895,12 @@
     G.logo = M ? { cx: W * .5, cy: H * .2, S: H * .22 } : { cx: W * .79, cy: H * .45, S: H * .52 };
     G.hor = M ? H * .44 : H * .56;
     G.eye = M ? { x0: W * .1, x1: W * .9 } : { x0: Math.max(W * .095, 9 * REM), x1: W * .94 };
-    G.pic = M ? { cx: W * .5, cy: H * .3, s: Math.min(W * .78, H * .36), seedS: (W - 2.2 * REM - 16) / 6.4 } : { cx: W * .72, cy: H * .45, s: H * .6, seedS: Math.min(H * .118, W * .07) };
-    /* sechs Keime als Treppe: am Handy zwischen Schiene und rechtem Rand, am Desktop rechts neben dem Text */
-    G.seed = M ? function (j) { var s = G.pic.seedS, y0 = Math.min(H * .5, (G.seedTop || H) - s * .62 - 30), st = Math.min(H * .06, (y0 - HT - 14 - s * .5) / (NS - 1)); return [1.1 * REM + 9 + s * (.5 + 1.08 * j), y0 - st * j]; } : function (j) { return [W * (.545 + .075 * j), H * (.735 - .095 * j)]; };
+    /* Kapitel 7: Feld der Zeichnung und die acht Keime des Auftakts. Hier stehen die Grundwerte, fitPic() und fitSeeds() ruecken
+       beides nach dem Messen der Texte zurecht (measure). */
+    G.pic = M ? { cx: W * .5, cy: H * .3, s: Math.min(W * .78, H * .36), seedS: 60 } : { cx: W * .72, cy: H * .45, s: H * .6, seedS: 100 };
+    G.cardBox = null; G.whoBox = null; G.seedP = []; G.pics = null;
+    G.seed = function (j) { return G.seedP[j] || [W * .5, H * .5]; };
+    fitPic(); fitSeeds();
     var F_;
     if (M) {
       var ltE = doc.getElementById('loop-t'), ltH = Math.max(86, ltE ? ltE.offsetHeight : 0);
@@ -1675,22 +1924,92 @@
   }
 
   var ths = [], verbW = [0, 0, 0], verbsEl = $('.verbs'), verbEls = $$('.verbs .v');
+  var whoEl = $('.who-head'), cardIn = $$('.card-in');
   function measure() {
     var r, i, z, el;
     if (gate) { r = gate.getBoundingClientRect(); if (r.width) { G.gx = r.left + r.width / 2; G.gy = r.top + r.height / 2; } }
     if (G.gx === undefined) { G.gx = W * .8; G.gy = H * .45; }
-    for (i = 0; i < zones.length; i++) { z = zones[i]; el = z.el; z.x = offL(el); z.y = offT(el); z.w = el.offsetWidth; z.h = el.offsetHeight; }
+    for (i = 0; i < zones.length; i++) { z = zones[i]; if (z.m) continue; el = z.el; z.x = offL(el); z.y = offT(el); z.w = el.offsetWidth; z.h = el.offsetHeight; }
     ths = $$('.th').map(function (e) { var b = e.getBoundingClientRect(); return { el: e, x: b.left + b.width / 2, y: b.top + b.height / 2, w: -1 }; });
     G.railH = H - HT - HB;
     $$('.mq').forEach(function (m) { var tEl = m.firstElementChild; m._w = tEl.scrollWidth / 2; });
     G.three = $$('.three li').map(function (li) { var tl = $('.tl', li); return { x: offL(li) + li.offsetWidth + 10, y: offT(li) + li.offsetHeight / 2 }; });
     if (verbsEl) { verbsEl.style.width = ''; verbW = verbEls.map(function (v) { var rg = doc.createRange(); rg.selectNodeContents(v); return Math.ceil(rg.getBoundingClientRect().width) + 2; }); vbS = -1; }
     G.stnH = stn.map(function (e) { return e.offsetHeight || 78; });
-    var whEl = $('.who-head'); G.seedTop = whEl ? offT(whEl) : H;
+    /* Kapitel 7: gemessen wird der gesetzte Text, ohne die Bewegung der Zeitachse (html.measuring haelt sie an) */
+    root.classList.add('measuring');
+    for (i = 0; i < zones.length; i++) { z = zones[i]; if (!z.m) continue; r = textBox(z.el); z.x = r.l; z.y = r.t; z.w = r.r - r.l; z.h = r.b - r.t; }
+    G.whoBox = whoEl ? textBox(whoEl) : null;
+    G.cardBox = cardIn.map(textBox);
+    root.classList.remove('measuring');
+    fitPic(); fitSeeds();
     fitWire(); fitHero();
     brandW100 = 0; brandK = ' ';
     portalMeasure();
     kick();
+  }
+  /* Rahmen des gesetzten Texts in einem Element: jede Zeile zaehlt, nicht der Block */
+  function textBox(el) {
+    var o = { l: 1e9, t: 1e9, r: -1e9, b: -1e9 }, tw, nd, rg, rs, i, r;
+    try {
+      tw = doc.createTreeWalker(el, 4, null); rg = doc.createRange();
+      while ((nd = tw.nextNode())) {
+        if (!/\S/.test(nd.nodeValue)) continue;
+        rg.selectNodeContents(nd); rs = rg.getClientRects();
+        for (i = 0; i < rs.length; i++) { r = rs[i]; if (!r.width || !r.height) continue; if (r.left < o.l) o.l = r.left; if (r.top < o.t) o.t = r.top; if (r.right > o.r) o.r = r.right; if (r.bottom > o.b) o.b = r.bottom; }
+      }
+    } catch (e) {}
+    if (o.l > o.r) { r = el.getBoundingClientRect(); o = { l: r.left, t: r.top, r: r.right, b: r.bottom }; }
+    return o;
+  }
+  /* Kapitel 7: Text und Zeichnung teilen sich das Bild und beruehren sich nie. Am Desktop steht die Zeichnung rechts neben dem Text
+     der Karte, am Handy ueber ihm. Gerechnet wird je Welt: gemessener Text der Karte und Rahmen der Zeichnung (bb). Jede Welt hat ihr
+     eigenes Feld (G.pics): eine lange Karte macht nur ihre eigene Zeichnung kleiner, nie den Text und nie die Bilder der anderen Welten.
+     Wo der Platz reicht, stehen alle Felder gleich (Groesse s0, Mitte c0). Der kleinste Abstand zum Text (gap) ist groesser als der
+     weiche Rand der Ruhezone der Karte, so wird kein Teil der Zeichnung gedaempft; am Desktop haelt das Feld den groesseren Abstand
+     air, solange es dafuer nicht kleiner werden muss. G.pic bleibt das kleinste Feld (Debug). */
+  function fitPic() {
+    var B = G.cardBox || [], s0 = M ? Math.min(W * .78, H * .36) : H * .6, c0 = M ? H * .3 : W * .72, gap = 1.75 * REM, air = 3.5 * REM, P = [], j, k, s, bb, t, lo, hi, q, sm = null;
+    var mr = (W < 1200 ? 2.5 : 1.75) * REM;   // Desktop: Rand rechts; auf schmalen Schirmen steht die Zeichnung ein Stueck innerhalb der Rahmenmarke
+    for (j = 0; j < NS; j++) {
+      bb = (PICS[j] && PICS[j].bb) || [0, 0, 1, 1]; t = B[j]; s = s0;
+      // Desktop, niedriges Fenster: die Oberkante der Zeichnung bleibt 16 px unter dem Kopfband
+      if (!M) s = Math.min(s, Math.max(s0 * .4, (H * .45 - HT - 16) / (.5 - bb[1])));
+      for (k = 0; k < 90; k++) {
+        if (M) { lo = HT + 10 + s * (.5 - bb[1]); hi = t ? t.t - 18 - s * (bb[3] - .5) : 1e9; }
+        else { lo = t ? t.r + gap + s * (.5 - bb[0]) : -1e9; hi = W - mr - s * (bb[2] - .5); }
+        if (lo <= hi || s < s0 * .4) break;
+        s *= .985;
+      }
+      k = lo <= hi ? clamp(c0, lo, hi) : (lo + hi) / 2;
+      // Desktop: wo rechts Platz ist, rueckt das Feld weiter vom Text ab (air), die Groesse bleibt
+      if (!M && t && lo <= hi) k = clamp(Math.max(k, t.r + air + s * (.5 - bb[0])), lo, hi);
+      q = M ? { cx: W * .5, cy: k, s: s } : { cx: k, cy: H * .45, s: s };
+      P.push(q); if (!sm || q.s < sm.s) sm = q;
+    }
+    G.pics = P;
+    if (sm) { G.pic.cx = sm.cx; G.pic.cy = sm.cy; G.pic.s = sm.s; }
+  }
+  /* Auftakt: acht Keime in zwei Treppen zu je vier Stufen, 01 bis 04 oben, 05 bis 08 darunter, so liest das Auge die Nummern der
+     Reihe nach. Am Desktop rechts neben der Ueberschrift, am Handy ueber ihr. Jede Stufe traegt Zeichnung, Linie und Nummer;
+     nichts beruehrt Text, Kopfband oder Fussband. */
+  function fitSeeds() {
+    var T_ = G.whoBox, cols = Math.ceil(NS / 2), x0, x1, y0, y1, px, s, row, dy, gr, tot, top, yl, j, P = [], st = 10;   // st: kleinste Stufe am Handy
+    if (M) { x0 = 1.1 * REM + 12; x1 = W - 1.1 * REM - 6; y0 = HT + 8; y1 = (T_ ? T_.t : H * .5) - 10; }
+    else { x0 = Math.max(W * .5, (T_ ? T_.r : 0) + 2.2 * REM); x1 = W - 1.75 * REM - 6; y0 = HT + 1.5 * REM; y1 = H - HB - 1.5 * REM; }
+    px = (x1 - x0) / cols;
+    // Hoehe einer Stufe: Zeichnung (mit Ueberstand) 1,18 s, dazu Linie und Nummer 16 px. Beide Treppen muessen in die Hoehe passen.
+    s = Math.min(px * (M ? .84 : .77), M ? H * .13 : H * .16, M ? (y1 - y0 - 36 - st * (cols - 1)) / 2.36 : (y1 - y0 - 32) / (2.36 + .3 * cols));
+    // Handy: der Keim wird nicht kleiner als 40 px, solange beide Treppen dann noch zwischen Kopfband und Ueberschrift passen (die Stufen werden dafuer flacher)
+    s = Math.max(24, M ? Math.max(s, Math.min(40, (y1 - y0 - 36) / 2.36)) : s);
+    gr = M ? 4 : s * .3;
+    row = 1.18 * s + 16;
+    dy = M ? clamp((y1 - y0 - 2 * row - gr) / (cols - 1), 0, s * .24) : s * .3;
+    tot = 2 * row + gr + (cols - 1) * dy;
+    top = M ? y0 + (y1 - y0 - tot) / 2 : Math.max(y0, H * .485 - tot / 2);
+    yl = top + tot - (.62 * s + 16);   // Mitte der ersten Stufe der unteren Treppe
+    for (j = 0; j < NS; j++) P.push([x0 + px * ((j % cols) + .5), yl - (j % cols) * dy - (j < cols ? 1 : 0) * (row + gr)]);
+    G.seedP = P; G.pic.seedS = s;
   }
   /* Handy: das Drahtmodell der Landingpage endet ueber der Liste "Daraus wissen wir", auch auf niedrigen Schirmen */
   var wireK = '';
@@ -1883,9 +2202,10 @@
       TL.fromTo(el, from, vars, a);
     });
   }
-  function show(el, a) { ft(el, a, a + .02, { autoAlpha: 0 }, { autoAlpha: 1 }, 'none'); }
+  function show(el, a) { ft(el, a, a + .02 * (a >= K8 ? KS : 1), { autoAlpha: 0 }, { autoAlpha: 1 }, 'none'); }
   function mark(el, a, b) { var s = (typeof el === 'string' ? $(el) : el).closest('.scene'), i; for (i = 0; i < ranges.length; i++) if (ranges[i].el === s) { ranges[i].a = Math.min(ranges[i].a, a); ranges[i].b = Math.max(ranges[i].b, b); return; } ranges.push({ el: s, a: a, b: b, on: null }); }
-  function calm(el, a, din, b, dout, k) { zones.push({ el: el, a0: a, a1: a + din * .7, b0: b, b1: b + dout, k: k === undefined ? .9 : k, x: 0, y: 0, w: 0, h: 0 }); }
+  /* m > 0: enge Zone, gemessen am gesetzten Text statt am Block, m Pixel weicher Rand */
+  function calm(el, a, din, b, dout, k, m) { zones.push({ el: el, a0: a, a1: a + din * .7, b0: b, b1: b + dout, k: k === undefined ? .9 : k, m: m || 0, x: 0, y: 0, w: 0, h: 0 }); }
   function beat(sel, o) {
     var el = $(sel); if (!el) return;
     var a = o.a, din = o.din || .5, b = o.b, dout = o.dout || .4, ws, n, per, gap;
@@ -2015,7 +2335,7 @@
     whw.forEach(function (w, i) { var g = whw.length > 1 ? .16 / (whw.length - 1) : 0; ft(w, 69.4 + i * g, 69.64 + i * g, { yPercent: 118 }, { yPercent: 0 }, 'power3.out'); });
     ft('.who-note', 69.7, 70.1, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0 });
     ft(wh, 72.1, 72.38, { autoAlpha: 1, x: 0 }, { autoAlpha: 0, x: -W * .32 }, 'power2.in');
-    calm(wh, 69.4, .4, 72.1, .3, .92);
+    calm(wh, 69.4, .4, 72.1, .3, .92, M ? 20 : 30);
     $$('.card').forEach(function (c, j) {
       var a = WA[j], inn = $('.card-in', c), dir = j % 2 ? -1 : 1, b = a + WL - .15;
       mark(c, a + .25, a + WL + .1);
@@ -2023,7 +2343,7 @@
       ft(inn, a + .3, a + .68, { opacity: 0, rotationY: dir * 70, x: dir * W * .06, transformPerspective: 1300, transformOrigin: (dir > 0 ? '0% 50%' : '100% 50%') }, { opacity: 1, rotationY: 0, x: 0 }, 'power3.out');
       ft(inn, b, b + .22, { opacity: 1, rotationY: 0, x: 0 }, { opacity: 0, rotationY: -dir * 80, x: -dir * W * .05 }, 'power2.in');
       ft(c, b + .22, b + .24, { autoAlpha: 1 }, { autoAlpha: 0 }, 'none');
-      calm(inn, a + .3, .4, b, .2, .92);
+      calm(inn, a + .3, .4, b, .2, .92, M ? 16 : 26);
     });
 
     /* K8: die Saetze stehen abwechselnd ueber und unter der Linie und loesen sich ueberlappend ab */
@@ -2108,9 +2428,9 @@
 
   /* ---------- Render ---------- */
   function render(p, t, dt, snap) {
-    var i, r, on;
+    var i, r, on, rm;
     TL.time(p, false);
-    for (i = 0; i < ranges.length; i++) { r = ranges[i]; on = p >= r.a - .05 && p <= r.b + .05; if (on !== r.on) { r.on = on; r.el.classList.toggle('on', on); } }
+    for (i = 0; i < ranges.length; i++) { r = ranges[i]; rm = .05 * (r.a >= K8 ? KS : 1); on = p >= r.a - rm && p <= r.b + rm; if (on !== r.on) { r.on = on; r.el.classList.toggle('on', on); } }
     if (openT >= 0 && hudK < 1) hudK = DEBUG ? 1 : clamp((t - openT - .4) / 1.2, 0, 1);
     portalDom(p);
     worlds(p, t);
@@ -2334,7 +2654,7 @@
   win.addEventListener('hashchange', function () { var n = dlgHash(), t; if (n) { dlgShow(n, $('#foot a[href^="' + n + '"]')); return; } t = hashTarget(); if (t === null) return; if (locked) open(false); jump(t, true); });
 
   /* ---------- Start ---------- */
-  function initForms() { FORM.towers.init(); Object.keys(FORM).forEach(function (k) { FORM[k].init(); }); }
+  function initForms() { FORM.towers.init(); Object.keys(FORM).forEach(function (k) { FORM[k].init(); }); fitPic(); }   // die Rahmen der Zeichnungen (bb) stehen erst jetzt fest
   function boot() {
     layout();
     N = M ? 2500 : 9000;
