@@ -1031,8 +1031,6 @@
             ctx.beginPath(); rrect(bx_, by_, b_[2] * u, bh_, 4.5 * u);
             ctx.globalAlpha = w * rl * (1 - lk) * .5 * (1 - sstep(68.7, 68.9, p)); ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
           }
-          ctx.globalAlpha = w * rl * .5 * (1 - sstep(68.7, 68.9, p)); ctx.strokeStyle = 'rgb(61,214,140)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(MK.ox + 18 * u, MK.oy + 103 * u + 4.5); ctx.lineTo(MK.ox + 106 * u, MK.oy + 103 * u + 4.5); ctx.stroke();
         }
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       },
